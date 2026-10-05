@@ -23,7 +23,8 @@ import { CAM_CENTRE, CAM_JOURNAL_X, VALVES, type ValveAxis } from './headLayout'
 import { buildCamCap, buildCamshaft } from './parts/camshaft';
 import { buildCylinderHead, onValveAxis } from './parts/cylinderHead';
 import { buildInjectors, buildPlugs } from './parts/plugsInjectors';
-import { buildChainLink, buildGuides, buildSprockets, buildTimingCase, CHAIN_LINKS, CHAIN_X, chainPins } from './parts/timingChain';
+import { buildExhaustManifold, buildIntakeManifold } from './parts/manifolds';
+import { buildChainCover, buildChainLink, buildGuides, buildSprockets, buildTimingCase, CHAIN_LINKS, CHAIN_X, chainPins } from './parts/timingChain';
 import { buildValveCover } from './parts/valveCover';
 import { buildValvePair, ValveSpringPair } from './parts/valvetrain';
 import { CYLINDER_X, MAIN_X, SPECS } from './specs';
@@ -32,6 +33,10 @@ import { camRotationDeg, valveLift, type ValveKind } from './timing';
 export type BlockView = 'section' | 'ghost' | 'solid';
 
 const DEG = Math.PI / 180;
+
+/** Layers / parts hidden inside the assembled engine (see Engine.setInteriorShadows). */
+const INTERIOR_LAYERS = new Set(['timing-drive', 'camshafts', 'valvetrain', 'rods-pistons', 'main-caps', 'crankshaft']);
+const INTERIOR = /^(liner-|head-bolts|head-gasket|valve-guides)/;
 
 interface StaticMesh {
   mesh: Mesh;
@@ -46,6 +51,7 @@ export const CAP_STYLES: Record<string, CapStyle> = {
   steel: { color: '#8d9196', line: '#3a3c40', angleDeg: -45, spacing: 1.8 },
   bronze: { color: '#b48f5a', line: '#5e4523', angleDeg: 45, spacing: 1.6 },
   soft: { color: '#3b3a38', line: '#191817', angleDeg: 0, spacing: 1.4 },
+  iron: { color: '#6d6a66', line: '#2c2a28', angleDeg: 45, spacing: 2.4 },
 };
 
 const CAP_OF_MATERIAL: Record<string, string> = {
@@ -57,6 +63,7 @@ const CAP_OF_MATERIAL: Record<string, string> = {
   darkSteel: 'steel',
   chainSteel: 'steel',
   stampedSteel: 'steel',
+  castIron: 'iron',
   bronze: 'bronze',
   crinkleBlack: 'soft',
   blackPlastic: 'soft',
@@ -104,7 +111,7 @@ export class Engine {
   /** Cut-away view (clipping plane + capped, hatched faces); set by the app. */
   section?: SectionView;
   private ghostCache = new Map<Material, Material>();
-  view: BlockView = 'section';
+  view: BlockView = 'solid';
 
   constructor(
     private registry: PartRegistry,
@@ -303,6 +310,13 @@ export class Engine {
       mesh(coverG.hardware, M('darkSteel')),
       mesh(coverG.filler, M('blackPlastic')),
     );
+
+    // ---- manifolds and chain cover (phase 5) ----
+    const inG = buildIntakeManifold();
+    this.registry.add(PARTS.intakeManifold, this.sectioned(inG.body, M('castAluminum')), mesh(inG.hardware, M('darkSteel')));
+    const exG = buildExhaustManifold();
+    this.registry.add(PARTS.exhaustManifold, this.sectioned(exG.body, M('castIron')), mesh(exG.hardware, M('darkSteel')));
+    this.registry.add(PARTS.chainCover, this.sectioned(buildChainCover(), M('castAluminum')));
   }
 
   /** Pose every moving part for an engine-clock angle (degrees, 0–720). */
@@ -328,6 +342,31 @@ export class Engine {
         n.motion.rotation.x = pose.rodAngle;
       }
     });
+  }
+
+  private interiorShadows = true;
+
+  /**
+   * Shadow casting of the parts that are fully enclosed by the housings when
+   * the engine is assembled and shown solid (their shadows cannot be seen
+   * then; skipping them roughly halves the shadow pass).
+   */
+  setInteriorShadows(on: boolean): void {
+    if (on === this.interiorShadows) return;
+    this.interiorShadows = on;
+    this.applyShadows();
+  }
+
+  /** castShadow for every part mesh: ghosted housings never, enclosed parts only when they can be seen. */
+  private applyShadows(): void {
+    const statics = new Set(this.staticMeshes.map((s) => s.mesh));
+    for (const p of this.registry.all()) {
+      const interior = INTERIOR_LAYERS.has(p.def.group) || INTERIOR.test(p.def.id);
+      p.motion.traverse((o) => {
+        if (!(o as Mesh).isMesh || o.userData.sectionHelper) return;
+        o.castShadow = (statics.has(o as Mesh) ? this.view !== 'ghost' : true) && (!interior || this.interiorShadows);
+      });
+    }
   }
 
   /** Add extra content to an already registered part. */
@@ -369,11 +408,11 @@ export class Engine {
     this.view = view;
     for (const s of this.staticMeshes) {
       s.mesh.material = view === 'ghost' ? s.ghost : s.solid;
-      s.mesh.castShadow = view !== 'ghost';
       s.mesh.receiveShadow = view !== 'ghost';
       s.mesh.renderOrder = view === 'ghost' ? 10 : 0;
     }
     this.section?.setEnabled(view === 'section');
+    this.applyShadows();
   }
 
   /** A static housing part: can be shown solid, as a ghost, or cut by the section plane. */

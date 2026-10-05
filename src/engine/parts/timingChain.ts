@@ -1,5 +1,5 @@
 import { BoxGeometry, type BufferGeometry, CylinderGeometry } from 'three';
-import { intersect } from '../../core/geometry/csg';
+import { intersect, subtract, union } from '../../core/geometry/csg';
 import { beltPath, type BeltPath, type PathCircle, pointAt, tangentLine, type V2 } from '../../core/geometry/beltPath';
 import { buildSprocket, sprocketPitchRadius } from '../../core/geometry/gear';
 import {
@@ -371,7 +371,8 @@ export interface TimingCaseGeometry {
  * and head, behind the chain plane. The guides and the tensioner bolt to it.
  * Its outline is the convex hull of the sprockets and the guide backs.
  */
-export function buildTimingCase(splitY: number): TimingCaseGeometry {
+/** Outline (z, y) of the timing case around sprockets, guides and tensioner, grown outwards by `grow` mm. */
+function caseOutline(grow: number): P2[] {
   const pts: P2[] = [];
   const ring = (c: V2, r: number) => {
     for (let i = 0; i < 48; i++) {
@@ -379,13 +380,13 @@ export function buildTimingCase(splitY: number): TimingCaseGeometry {
       pts.push([c[0] + Math.cos(a) * r, c[1] + Math.sin(a) * r]);
     }
   };
-  ring(CRANK_C, 44);
-  ring(EX_C, CAM_PITCH_R + 12);
-  ring(IN_C, CAM_PITCH_R + 12);
+  ring(CRANK_C, 44 + grow);
+  ring(EX_C, CAM_PITCH_R + 12 + grow);
+  ring(IN_C, CAM_PITCH_R + 12 + grow);
   for (const circle of [PATH_INDEX.guide, PATH_INDEX.shoe]) {
     const a = arcOf(circle);
     const C = CHAIN_PATH.circles[circle]!;
-    const R = Math.abs(C.r) - 22;
+    const R = Math.abs(C.r) - 22 + grow;
     const ext = 40 / Math.abs(C.r);
     const lo = Math.min(a.from, a.from + a.sweep) - ext;
     const hi = Math.max(a.from, a.from + a.sweep) + ext;
@@ -395,11 +396,19 @@ export function buildTimingCase(splitY: number): TimingCaseGeometry {
     }
   }
   const { at, u } = tensionerPlacement();
-  for (const s of [16, 58]) for (const w of [-17, 17]) pts.push([at[0] + u[0] * s - u[1] * w, at[1] + u[1] * s + u[0] * w]);
+  const w0 = 17 + grow;
+  for (const s of [16 - grow, 58 + grow]) for (const w of [-w0, w0]) pts.push([at[0] + u[0] * s - u[1] * w, at[1] + u[1] * s + u[0] * w]);
   const hull = convexHull(pts);
-  const outline = roundCorners(hull, hull.map(() => 0), true);
+  return roundCorners(hull, hull.map(() => 0), true);
+}
+
+/** Front face of the timing-case plate (the chain cover seals against it). */
+const CASE_FRONT_X = CHAIN_X + 5;
+
+export function buildTimingCase(splitY: number): TimingCaseGeometry {
+  const outline = caseOutline(0);
   const hole = (c: V2, r: number) => circlePts(c[0], c[1], r, 48, true);
-  const x0 = CHAIN_X + 5;
+  const x0 = CASE_FRONT_X;
   const x1 = SPECS.block.halfLength * -1 + 0.5;
   const plate = extrudeAlongX(shapeFrom(outline, [hole(CRANK_C, 22), hole(EX_C, 13), hole(IN_C, 13)]), x0, x1, 0.8, 8);
   const lowBox = new BoxGeometry(100, 2000, 2000);
@@ -407,4 +416,24 @@ export function buildTimingCase(splitY: number): TimingCaseGeometry {
   const highBox = new BoxGeometry(100, 2000, 2000);
   highBox.translate((x0 + x1) / 2, splitY + 1000, 0);
   return { lower: intersect(plate, [lowBox], 35), upper: intersect(plate, [highBox], 35) };
+}
+
+/**
+ * Timing (chain) cover: a cast shell over the chain drive, sealing against the
+ * front face of the timing-case plate. Hollow, so the section view shows the
+ * chain inside; the crank nose passes through a seal bore.
+ */
+export function buildChainCover(): BufferGeometry {
+  const front = CHAIN_X - 20.5; // clear of the cam sprocket hubs (x ≈ −222)
+  const wall = 4;
+  const outer = extrudeAlongX(shapeFrom(caseOutline(wall), [circlePts(CRANK_C[0], CRANK_C[1], 21, 48, true)]), front, CASE_FRONT_X, 1.2, 8);
+  const cavity = extrudeAlongX(shapeFrom(caseOutline(0)), front + wall, CASE_FRONT_X + 1, 0, 8);
+  // seal boss around the crank nose
+  const boss = new CylinderGeometry(30, 30, 8, 48);
+  boss.rotateZ(Math.PI / 2);
+  boss.translate(front - 3, CRANK_C[1], CRANK_C[0]);
+  const bore = new CylinderGeometry(21, 21, 60, 48);
+  bore.rotateZ(Math.PI / 2);
+  bore.translate(front, CRANK_C[1], CRANK_C[0]);
+  return subtract(union(outer, [boss]), [cavity, bore], 35);
 }

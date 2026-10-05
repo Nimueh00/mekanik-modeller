@@ -98,7 +98,8 @@ export type MaterialKey =
   | 'ceramic'
   | 'rubber'
   | 'gasket'
-  | 'chainSteel';
+  | 'chainSteel'
+  | 'castIron';
 
 /**
  * Shared material library. Materials are created once and shared; callers that
@@ -168,6 +169,17 @@ export class MaterialLibrary {
           color: new Color('#3a3b3d'),
           metalness: 0.9,
           roughness: 0.38,
+        });
+      case 'castIron':
+        // Cast-iron exhaust manifold: dark, rough, slightly warm (heat-tempered) grey.
+        return new MeshPhysicalMaterial({
+          color: new Color('#4a4642'),
+          metalness: 0.7,
+          roughness: 0.78,
+          roughnessMap: cast(),
+          bumpMap: cast(),
+          bumpScale: 0.35,
+          side: DoubleSide,
         });
       case 'bronze':
         return new MeshPhysicalMaterial({

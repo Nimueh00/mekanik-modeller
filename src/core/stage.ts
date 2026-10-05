@@ -87,6 +87,7 @@ export class Stage {
   private glowComposer?: EffectComposer;
   private bloomPass?: UnrealBloomPass;
   private bloom = false;
+  private shadowsDirty = true;
 
   constructor(private opts: StageOptions) {
     const { container, subjectRadius: R } = opts;
@@ -98,6 +99,8 @@ export class Stage {
     this.renderer.toneMappingExposure = 1.05;
     this.renderer.shadowMap.enabled = true;
     this.renderer.shadowMap.type = PCFShadowMap;
+    // Shadows are redrawn only when something moved (see invalidateShadows); a paused machine costs no shadow pass.
+    this.renderer.shadowMap.autoUpdate = false;
     this.renderer.localClippingEnabled = true;
     this.renderer.setClearColor(0x000000, 0);
     container.appendChild(this.renderer.domElement);
@@ -256,6 +259,11 @@ export class Stage {
     this.resize();
   }
 
+  /** Request a shadow-map redraw on the next frame (call whenever a shadow caster moved or changed). */
+  invalidateShadows(): void {
+    this.shadowsDirty = true;
+  }
+
   /** Zoom out to keep a spread-out subject in view (1 = default framing). */
   setFit(f: number): void {
     if (Math.abs(f - this.fit) < 1e-4) return;
@@ -309,6 +317,10 @@ export class Stage {
       this.controls.update();
       this.camera.updateMatrixWorld();
       for (const cb of this.lateCallbacks) cb(dt, t);
+      if (this.shadowsDirty) {
+        this.renderer.shadowMap.needsUpdate = true;
+        this.shadowsDirty = false;
+      }
       if (this.bloom && this.composer && this.glowComposer) {
         this.glowComposer.render(dt);
         this.composer.render(dt);
@@ -337,6 +349,9 @@ class GlowPass extends Pass {
     const mask = this.camera.layers.mask;
     const autoClear = renderer.autoClear;
     const shadows = renderer.shadowMap.autoUpdate;
+    // the glow pass draws with a reduced layer mask: it must never refresh the shadow map
+    const needs = renderer.shadowMap.needsUpdate;
+    renderer.shadowMap.needsUpdate = false;
     const clear = renderer.getClearColor(new Color());
     const alpha = renderer.getClearAlpha();
     renderer.shadowMap.autoUpdate = false;
@@ -353,6 +368,7 @@ class GlowPass extends Pass {
     this.camera.layers.mask = mask;
     renderer.autoClear = autoClear;
     renderer.shadowMap.autoUpdate = shadows;
+    renderer.shadowMap.needsUpdate = needs;
     renderer.setClearColor(clear, alpha);
   }
 }

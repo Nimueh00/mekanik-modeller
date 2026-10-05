@@ -250,6 +250,11 @@ export class SectionView {
     return c;
   }
 
+  /** Is this part cut by the plane (on and not exempt)? */
+  clipsPart(partId: string | undefined): boolean {
+    return this.enabled && !this.exempt(partId);
+  }
+
   /** Is a world point removed by the cut? */
   isCut(p: Vector3): boolean {
     return this.enabled && this.plane.distanceToPoint(p) < 0;

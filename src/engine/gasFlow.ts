@@ -14,6 +14,7 @@ import { MAX_LIFT } from './camProfile';
 import { chamberCeiling, HEAD_FACE_Y, RIDGE_Y, stationPoint, type ValveAxis } from './headLayout';
 import { pistonPinHeight } from './kinematics';
 import { portCurves } from './parts/cylinderHead';
+import { exhaustPrimary, intakeRunner, MANIFOLD } from './parts/manifolds';
 import { crownHeightAt } from './parts/piston';
 import { CYLINDER_X, SPECS } from './specs';
 import { burnFraction, fromFiringTdc, gasTemperature, SWEPT_VOLUME, volumeRate } from './thermo';
@@ -187,25 +188,28 @@ interface ValvePath {
 
 function buildPaths(cylinder: number, kind: 'intake' | 'exhaust'): ValvePath[] {
   const pc = portCurves(cylinder, kind);
-  const sign = kind === 'intake' ? -1 : 1;
   const tJoin = 0.18; // where the branches merge into the trunk
+  const tFace = 0.9; // trunk parameter at the head's port face (the manifold takes over)
+  // the part of the manifold the gas is drawn in: intake from mid-runner, exhaust up to mid-primary
+  const pipe = kind === 'intake' ? intakeRunner(cylinder) : exhaustPrimary(cylinder);
+  const pipeR = MANIFOLD[kind].innerR - 2;
+  const tPipe = kind === 'intake' ? 0.5 : 0.55;
   return pc.branches.map((b) => {
     const p = new Path();
-    const outerEnd = pc.trunk.getPoint(1);
-    const beyond = outerEnd.clone().add(new Vector3(0, 0, sign * (kind === 'intake' ? 30 : 46)));
     if (kind === 'intake') {
-      p.add(beyond, pc.trunkRadius(1) + 2);
-      p.addCurve(pc.trunk, pc.trunkRadius, 1, tJoin, 10);
+      p.addCurve(pipe, () => pipeR, tPipe, 0, 12);
+      const outside = p.total;
+      p.addCurve(pc.trunk, pc.trunkRadius, tFace, tJoin, 10);
       p.addCurve(b.curve, b.radius, 1, 0.12, 18);
       p.add(stationPoint(b.valve, 7), b.radius(0));
-    } else {
-      p.add(stationPoint(b.valve, 7), b.radius(0));
-      p.addCurve(b.curve, b.radius, 0.12, 1, 18);
-      p.addCurve(pc.trunk, pc.trunkRadius, tJoin, 1, 10);
-      p.add(beyond, pc.trunkRadius(1) + 6);
+      return { valve: b.valve, path: p, outside: outside / p.total };
     }
-    const outsideLen = beyond.distanceTo(outerEnd);
-    return { valve: b.valve, path: p, outside: outsideLen / p.total };
+    p.add(stationPoint(b.valve, 7), b.radius(0));
+    p.addCurve(b.curve, b.radius, 0.12, 1, 18);
+    p.addCurve(pc.trunk, pc.trunkRadius, tJoin, tFace, 10);
+    const inside = p.total;
+    p.addCurve(pipe, () => pipeR, 0, tPipe, 12);
+    return { valve: b.valve, path: p, outside: (p.total - inside) / p.total };
   });
 }
 

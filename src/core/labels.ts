@@ -12,6 +12,12 @@ export interface LabelDef {
   at?: readonly [number, number, number];
 }
 
+/**
+ * Optional visibility rule supplied by the machine: receives the label and its
+ * current anchor (world space). When set it replaces the tier thresholds.
+ */
+export type LabelFilter = (def: LabelDef, anchor: Vector3) => boolean;
+
 /** Global explode amount at which each tier becomes visible. */
 const TIER_THRESHOLD = { 1: 0, 2: 0.12, 3: 0.45 } as const;
 
@@ -26,6 +32,8 @@ interface Entry {
   /** Last accepted placement (index into the candidate list), for stability. */
   slot: number;
   shown: boolean;
+  /** Cached line-of-sight result (null = not tested since the label became eligible). */
+  seen: boolean | null;
 }
 
 const NS = 'http://www.w3.org/2000/svg';
@@ -42,12 +50,21 @@ export class LabelSystem {
   private layer = document.createElement('div');
   private svg = document.createElementNS(NS, 'svg');
   private v = new Vector3();
+  private anchor = new Vector3();
   enabled = true;
   /** Cap on simultaneously visible labels (lower on small screens). */
   maxVisible = 99;
   /** Region (CSS px) that labels must stay inside; set from the free area next to the panel. */
   area = { left: 0, top: 0, right: window.innerWidth, bottom: window.innerHeight };
   onPick: (partId: string) => void = () => {};
+  filter: LabelFilter | null = null;
+  /**
+   * Optional line-of-sight test (true = the anchor is visible). Results are
+   * cached and refreshed round-robin, `occlusionBudget` labels per frame.
+   */
+  occlusion: ((partId: string, anchor: Vector3) => boolean) | null = null;
+  occlusionBudget = 6;
+  private rr = 0;
 
   constructor(
     parent: HTMLElement,
@@ -87,7 +104,7 @@ export class LabelSystem {
       const dot = document.createElementNS(NS, 'circle');
       dot.setAttribute('r', '3.2');
       this.svg.append(line, dot);
-      this.entries.push({ def, rest, el, dot, line, w: 0, h: 0, slot: 0, shown: false });
+      this.entries.push({ def, rest, el, dot, line, w: 0, h: 0, slot: 0, shown: false, seen: null });
     }
     // Most important first: tier, then priority, then declaration order.
     this.entries.sort((a, b) => a.def.tier - b.def.tier || (a.def.priority ?? 5) - (b.def.priority ?? 5));
@@ -103,6 +120,11 @@ export class LabelSystem {
       e.w = e.el.offsetWidth + 6;
       e.h = e.el.offsetHeight + 4;
     }
+  }
+
+  /** Forget cached line-of-sight results (call when the scene changed, not merely the camera). */
+  invalidateOcclusion(): void {
+    for (const e of this.entries) e.seen = null;
   }
 
   setEnabled(on: boolean): void {
@@ -122,13 +144,30 @@ export class LabelSystem {
     const A = this.area;
     const midX = (A.left + A.right) / 2;
 
+    // refresh a few cached line-of-sight results each frame (round-robin)
+    if (this.occlusion && this.entries.length) {
+      for (let k = 0; k < this.occlusionBudget; k++) {
+        const e = this.entries[(this.rr = (this.rr + 1) % this.entries.length)]!;
+        if (e.seen !== null) e.seen = this.occlusion(e.def.partId, this.anchor.copy(e.rest).add(this.registry.get(e.def.partId).root.position));
+      }
+    }
+
     for (const e of this.entries) {
       const node = this.registry.get(e.def.partId);
-      let ok = placed.length < this.maxVisible && node.root.visible && explodeAmount >= TIER_THRESHOLD[e.def.tier] - 1e-6;
+      this.anchor.copy(e.rest).add(node.root.position);
+      let ok =
+        placed.length < this.maxVisible &&
+        node.root.visible &&
+        (this.filter ? this.filter(e.def, this.anchor) : explodeAmount >= TIER_THRESHOLD[e.def.tier] - 1e-6);
+      if (!ok) e.seen = null;
+      else if (this.occlusion) {
+        if (e.seen === null) e.seen = this.occlusion(e.def.partId, this.anchor);
+        ok = e.seen;
+      }
       let sx = 0;
       let sy = 0;
       if (ok) {
-        this.v.copy(e.rest).add(node.root.position).project(camera);
+        this.v.copy(this.anchor).project(camera);
         sx = (this.v.x * 0.5 + 0.5) * W;
         sy = (-this.v.y * 0.5 + 0.5) * H;
         ok = this.v.z < 1 && sx > A.left + 10 && sx < A.right - 10 && sy > A.top + 10 && sy < A.bottom - 10;

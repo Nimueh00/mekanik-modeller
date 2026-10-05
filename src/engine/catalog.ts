@@ -1,4 +1,5 @@
 import type { LayerDef, PartDef, PartInfo, Vec3 } from '../core/registry';
+import { SPECS } from './specs';
 
 /** Disassembly layers, outermost first (VISION §4). */
 export const LAYERS = [
@@ -32,11 +33,27 @@ const def = (
 
 const ordinal = (n: number) => `${n}.`;
 
+/**
+ * Valve-train explode: the pair moves out sideways, clear of the lifted head
+ * (intake −Z, exhaust +Z), and each element is then slid `along` mm further
+ * up its own (21° tilted) valve axis, so valve → spring → retainer → bucket
+ * read as a coaxial stack, as in a workshop-manual exploded drawing.
+ */
+const VALVE_TILT = (SPECS.valveTrain.includedAngleDeg / 2) * (Math.PI / 180);
+function valveStackOffset(kind: 'intake' | 'exhaust', along: number): Vec3 {
+  const s = kind === 'intake' ? -1 : 1;
+  return [0, 330 + along * Math.cos(VALVE_TILT), s * (240 + along * Math.sin(VALVE_TILT))];
+}
+
 /*
  * Explode offsets (mm, world axes: +X flywheel end, +Y up, +Z towards the viewer).
  * Directions follow the real teardown: pan down, pistons/rods up out of the
  * bores, rod and main caps down, crank down and forward (+Z) clear of the caps,
  * flywheel to the rear (+X), timing drive to the front (-X).
+ * Top end: every layer that comes off earlier sits further out than the ones
+ * under it (cover > cam caps > cams > buckets/springs/valves > bolts > head >
+ * gasket > rings > pistons), so no part passes through another when fully
+ * open. Manifolds move out sideways, the chain cover forwards.
  */
 export const PARTS = {
   block: def('block', 'Motor bloğu', 'block', [0, 0, 0], 0, {
@@ -63,7 +80,7 @@ export const PARTS = {
     function: 'Pistonların doğrusal hareketini biyeller üzerinden dönme hareketine çevirir ve torku volana iletir.',
     material: 'Dövme çelik (ör. 42CrMo4), indüksiyonla sertleştirilmiş muylular',
     notes:
-      '5 ana muylu, 4 biyel muylusu: 1-4 muyluları 0°, 2-3 muyluları 180°. Bu düzen 1. ve 2. derece kuvvetleri ve dönen kütle momentlerini sıralı dörtlüde birbirini götürür. 8 karşı ağırlık, dönen kütleleri dengeleyerek ana yatak yüklerini ve titreşimi azaltır (balans). Muylu köşelerindeki radüsler gerilme yığılmasını ve yorulma çatlağını önler; her ana muylunun yanında bir karşı ağırlık bulunduğu için mil yüksek devirde bile eğilmez.',
+      '5 ana muylu, 4 biyel muylusu: 1-4 muyluları 0°, 2-3 muyluları 180°. Bu düzende 1. derece (krank hızındaki) serbest kuvvetler ve momentler birbirini götürür; 2. derece (iki kat hızdaki) kuvvetler ise toplanır — sıralı dörtlünün bilinen dikey titreşimi budur ve büyük motorlarda iki kat hızda dönen denge milleriyle giderilir. 8 karşı ağırlık dönen kütleleri dengeleyerek ana yatak yüklerini ve milin eğilmesini azaltır. Muylu köşelerindeki radüsler gerilme yığılmasını ve yorulma çatlağını önler.',
   }),
   flywheel: def('flywheel', 'Volan', 'flywheel', [240, 0, 0], 0, {
     function: 'Zamanlar arasındaki tork dalgalanmasını ataletle yumuşatır; kavrama yüzeyini ve marş dişlisini taşır.',
@@ -81,30 +98,30 @@ export const PARTS = {
     notes: 'Arka taraftaki derin hazne (sump), ivmelenme ve frenlemede yağ emişinin açıkta kalmamasını sağlar.',
   }),
   piston: (n: number) =>
-    def(`piston-${n}`, `Piston (${ordinal(n)} silindir)`, 'rods-pistons', [0, 250, 0], n, {
+    def(`piston-${n}`, `Piston (${ordinal(n)} silindir)`, 'rods-pistons', [0, 200, 0], n, {
       function: 'Yanma basıncını karşılayıp kuvveti piston pimi üzerinden biyele aktarır.',
       material: 'Alüminyum-silisyum döküm/dövme alaşım',
       notes:
         'Isıl genleşme toleransı: tepe bölgesi en sıcak yer olduğu için en çok genleşir; bu yüzden tepe çapı eteğe göre ~0.3 mm, segman arazileri ~0.15 mm küçük işlenir ve piston çalışma sıcaklığında silindire tam oturur. Segmanlar üç iş yapar: (1) kompresyon segmanı yanma gazını sızdırmaz tutar, (2) ikinci segman kaçağı yakalar ve yağı aşağı sıyırır, (3) yağ segmanı silindir duvarındaki yağ filmini ince tutar. Kubbeli tepedeki cepler supaplara boşluk bırakır.',
     }),
   pistonPin: (n: number) =>
-    def(`piston-pin-${n}`, `Piston pimi (${ordinal(n)} silindir)`, 'rods-pistons', [0, 250, 110], n, {
+    def(`piston-pin-${n}`, `Piston pimi (${ordinal(n)} silindir)`, 'rods-pistons', [0, 200, 110], n, {
       function: 'Pistonu biyelin küçük ucuna bağlar; biyel bu pim etrafında salınır.',
       material: 'Sementasyon çeliği, taşlanmış',
       notes: 'İçi boştur: eğilme rijitliğini korurken ileri-geri giden kütleyi azaltır.',
     }),
   rings: (n: number) =>
-    def(`rings-${n}`, `Segmanlar (${ordinal(n)} silindir)`, 'rods-pistons', [0, 335, 0], n, {
+    def(`rings-${n}`, `Segmanlar (${ordinal(n)} silindir)`, 'rods-pistons', [0, 260, 0], n, {
       function: 'Yanma odasını sızdırmaz tutar (kompresyon segmanları) ve silindir duvarındaki fazla yağı sıyırır (yağ segmanı).',
       material: 'Nitrürlenmiş çelik / dökme demir, krom kaplı',
       notes: 'Segman ağızları birbirine göre kaydırılarak yerleştirilir ki gazlar düz bir kaçak yolu bulamasın.',
     }),
   rod: (n: number) =>
-    def(`rod-${n}`, `Biyel (${ordinal(n)} silindir)`, 'rods-pistons', [0, 190, 0], n, {
+    def(`rod-${n}`, `Biyel (${ordinal(n)} silindir)`, 'rods-pistons', [0, 140, 0], n, {
       function: 'Pistonun ileri-geri hareketini krank muylusunun dönme hareketine bağlar.',
       material: 'Dövme çelik',
       notes:
-        'I-kesit neden? Biyel gövdesi yanmada basma (burkulma), eylemsizlikte çekme yükü taşır. I profili malzemeyi neutral eksenden uzağa koyarak aynı kütleyle en yüksek eğilme atalet momentini verir; ince gövde ağırlığı düşürür, ileri-geri giden kütle azalır. Merkezden merkeze 133 mm; λ = r/l ≈ 0.295: uzun biyel yanal piston kuvvetini (yan itme) azaltır.',
+        'I-kesit neden? Biyel gövdesi yanmada basma (burkulma), eylemsizlikte çekme yükü taşır. I profili malzemeyi tarafsız eksenden uzağa koyarak aynı kütleyle en yüksek eğilme atalet momentini verir; ince gövde ağırlığı düşürür, ileri-geri giden kütle azalır. Merkezden merkeze 133 mm; λ = r/l ≈ 0.295: uzun biyel yanal piston kuvvetini (yan itme) azaltır.',
     }),
   rodCap: (n: number) =>
     def(`rod-cap-${n}`, `Biyel kapağı (${ordinal(n)} silindir)`, 'rods-pistons', [0, -170, 0], n, {
@@ -113,26 +130,26 @@ export const PARTS = {
       notes: 'Kapak ve biyel birlikte işlenir; birbirleriyle değiştirilemezler.',
     }),
   // ------------------------------------------------------------ top end (phase 2)
-  cylinderHead: def('cylinder-head', 'Silindir kapağı', 'cylinder-head', [0, 420, 0], 0, {
+  cylinderHead: def('cylinder-head', 'Silindir kapağı', 'cylinder-head', [0, 310, 0], 0, {
     function:
       'Yanma odalarını kapatır; emme ve egzoz kanallarını, supap yuvalarını, supap kılavuzlarını, eksantrik yataklarını ve buji yuvalarını taşır.',
     material: 'Alüminyum döküm (AlSi7Mg), sertleştirilmiş supap yuvaları, bronz kılavuzlar',
     notes:
-      'Çatı (pent-roof) biçimli yanma odası: iki eğik düzlem 42° açıyla buluşur ve supaplar bu düzlemlere dik durur. Buji ortadadır; alev cephesi her yöne kısa yoldan yayılır. Odanın kenarındaki düz bant (squish) sıkıştırma sonunda karışımı merkeze iterek türbülans yaratır.',
+      'Çatı (pent-roof) biçimli yanma odası: emme ve egzoz supaplarının eksenleri arasında 42° açı vardır; her çatı düzlemi kendi supaplarına diktir, bu yüzden iki düzlem sırtta 138° ile buluşur. Buji ortadadır; alev cephesi her yöne kısa yoldan yayılır. Odanın kenarındaki düz bant (squish) sıkıştırma sonunda karışımı merkeze iterek türbülans yaratır.',
   }),
-  headGasket: def('head-gasket', 'Silindir kapak contası', 'cylinder-head', [0, 300, 0], 1, {
+  headGasket: def('head-gasket', 'Silindir kapak contası', 'cylinder-head', [0, 280, 0], 1, {
     function: 'Blok ile kapak arasını yanma gazına, soğutma suyuna ve yağa karşı sızdırmaz yapar.',
     material: 'Çok katmanlı çelik (MLS), elastomer kaplı',
     notes:
       'Silindir ağızlarındaki kabartmalı halkalar (stopper) en yüksek yüzey basıncını yanma odası çevresine toplar. Sıkıştırılmış kalınlık (1 mm) sıkıştırma oranını doğrudan etkiler.',
   }),
-  headBolts: def('head-bolts', 'Silindir kapak cıvataları', 'cylinder-head', [0, 520, 0], 2, {
+  headBolts: def('head-bolts', 'Silindir kapak cıvataları', 'cylinder-head', [0, 420, 0], 2, {
     function: 'Kapağı contayla birlikte bloğa sıkıştırır; yanma basıncının kapağı kaldırmasına karşı koyar.',
     material: 'Yüksek mukavemetli çelik (10.9), akma sınırında sıkılan (torque-to-yield)',
     notes:
       'On cıvata, silindirler arasında, eksantriklerin altındadır: bu yüzden kapak ancak eksantrikler söküldükten sonra çıkarılabilir. Sıkma ortadan dışa doğru, spiral sırayla yapılır.',
   }),
-  valveGuides: def('valve-guides', 'Supap kılavuzları ve yay tabanları', 'cylinder-head', [0, 420, 0], 3, {
+  valveGuides: def('valve-guides', 'Supap kılavuzları ve yay tabanları', 'cylinder-head', [0, 310, 0], 3, {
     function: 'Supap sapını eksenel olarak yönlendirir ve supap tablasının ısısını kapağa iletir.',
     material: 'Sinterlenmiş bronz / dökme demir kılavuz, sertleştirilmiş çelik yay tabanı',
     notes: 'Kılavuzun üstündeki lastik keçe, supap sapından yanma odasına yağ sızmasını (yağ yakmayı) önler.',
@@ -142,7 +159,7 @@ export const PARTS = {
       `valves-${kind}-${n}`,
       `${kind === 'intake' ? 'Emme' : 'Egzoz'} supapları (${ordinal(n)} silindir)`,
       'valvetrain',
-      [0, 360, kind === 'intake' ? -40 : 40],
+      valveStackOffset(kind, 0),
       n,
       kind === 'intake'
         ? {
@@ -163,7 +180,7 @@ export const PARTS = {
       `springs-${kind}-${n}`,
       `${kind === 'intake' ? 'Emme' : 'Egzoz'} supap yayları (${ordinal(n)} silindir)`,
       'valvetrain',
-      [0, 330, kind === 'intake' ? -40 : 40],
+      valveStackOffset(kind, 55),
       n,
       {
         function: 'Supabı kapalı tutar ve yüksek devirde iticinin kam profilini izlemesini sağlar.',
@@ -177,7 +194,7 @@ export const PARTS = {
       `retainers-${kind}-${n}`,
       `${kind === 'intake' ? 'Emme' : 'Egzoz'} yay tablaları ve tırnaklar (${ordinal(n)} silindir)`,
       'valvetrain',
-      [0, 380, kind === 'intake' ? -40 : 40],
+      valveStackOffset(kind, 100),
       n,
       {
         function: 'Yay kuvvetini supap sapına aktarır; iki parçalı konik tırnaklar tablayı sapın kanalına kilitler.',
@@ -190,7 +207,7 @@ export const PARTS = {
       `buckets-${kind}-${n}`,
       `${kind === 'intake' ? 'Emme' : 'Egzoz'} kovan iticileri (${ordinal(n)} silindir)`,
       'valvetrain',
-      [0, 400, kind === 'intake' ? -40 : 40],
+      valveStackOffset(kind, 140),
       n,
       {
         function: 'Kam lobunun itmesini doğrudan supaba iletir; yan kuvvetleri kapaktaki deliğine aktarır, supap sapını korur.',
@@ -200,14 +217,14 @@ export const PARTS = {
       },
     ),
   camshaft: (kind: 'intake' | 'exhaust') =>
-    def(`camshaft-${kind}`, `${kind === 'intake' ? 'Emme' : 'Egzoz'} eksantrik mili`, 'camshafts', [0, 300, kind === 'intake' ? -70 : 70], kind === 'intake' ? 0 : 1, {
+    def(`camshaft-${kind}`, `${kind === 'intake' ? 'Emme' : 'Egzoz'} eksantrik mili`, 'camshafts', [0, 420, kind === 'intake' ? -40 : 40], kind === 'intake' ? 0 : 1, {
       function: 'Lobları ile supapları doğru anda, doğru süre ve miktarda açar. Krankın yarı hızında döner.',
       material: 'Soğutulmuş dökme demir (chilled cast iron), indüksiyonla sertleştirilmiş loblar',
       notes:
         'Ateşleme sırası 1-3-4-2 olduğu için ardışık silindirlerin lobları 90° arayla dizilir. Lob profili harmonik bir ivme eğrisinden türetilir: rampa supap boşluğunu yavaşça kapatır, ardından supap 60° kam açısında 9 mm’ye ulaşır.',
     }),
   camCaps: (kind: 'intake' | 'exhaust') =>
-    def(`cam-caps-${kind}`, `${kind === 'intake' ? 'Emme' : 'Egzoz'} eksantrik yatak kapakları`, 'camshafts', [0, 260, kind === 'intake' ? -50 : 50], 2, {
+    def(`cam-caps-${kind}`, `${kind === 'intake' ? 'Emme' : 'Egzoz'} eksantrik yatak kapakları`, 'camshafts', [0, 490, kind === 'intake' ? -40 : 40], 2, {
       function: 'Eksantrik milini kapaktaki yatak yuvalarına bağlar.',
       material: 'Alüminyum döküm (kapakla birlikte işlenir)',
       notes: 'Kapaklar yerinde işlendiği için numaralıdır ve yerleri değiştirilemez. Yağ filmi doğrudan alüminyum üzerinde çalışır (zarf yoktur).',
@@ -235,20 +252,39 @@ export const PARTS = {
     notes:
       'Krank zinciri egzoz tarafından çeker: bu taraf gergindir. Emme tarafı gevşek kalır; gergi, aşınmayla uzayan zinciri motor yağı basıncıyla otomatik olarak telafi eder.',
   }),
-  plugs: def('spark-plugs', 'Bujiler ve bobinler', 'plugs-injectors', [0, 320, 0], 0, {
+  plugs: def('spark-plugs', 'Bujiler ve bobinler', 'plugs-injectors', [0, 380, 0], 0, {
     function: 'Sıkıştırma sonunda elektrotları arasında kıvılcım çakarak karışımı ateşler.',
     material: 'Alüminyum oksit seramik yalıtkan, nikel kaplı çelik gövde, nikel/iridyum elektrot',
     notes:
-      'M14 diş, 19 mm diş boyu. Kalem tipi bobin (coil-on-plug) her bujiye ayrı yüksek gerilim (≈ 30 kV) üretir. Ateşleme avansı 15° ÜÖN öncesi: basınç tepesinin ÜÖN’den biraz sonra oluşması için yanma erken başlatılır.',
+      'M14 diş, 19 mm diş boyu. Kalem tipi bobin (coil-on-plug) her bujiye ayrı yüksek gerilim (≈ 30 kV) üretir. Ateşleme avansı 15° ÜÖN (üst ölü nokta) öncesi: yanma birkaç milisaniye sürdüğü için erken başlatılır ki basınç tepesi ÜÖN’den 15–20° sonra, piston aşağı inmeye başlarken oluşsun.',
   }),
-  injectors: def('injectors', 'Enjektörler ve yakıt rayı', 'plugs-injectors', [0, 200, -160], 1, {
+  injectors: def('injectors', 'Enjektörler ve yakıt rayı', 'plugs-injectors', [0, 150, -170], 1, {
     function: 'Yakıtı emme kanalına, emme supaplarının arkasına püskürtür (çok noktalı püskürtme).',
     material: 'Paslanmaz çelik iğne ve meme, cam elyaf takviyeli PA gövde, FKM o-ringler',
     notes: 'Supap tablasının sıcak arka yüzüne püskürtülen yakıt kolayca buharlaşır. Yakıt rayı ≈ 3–4 bar basınçla tüm enjektörleri besler.',
   }),
-  valveCover: def('valve-cover', 'Supap kapağı', 'valve-cover', [0, 260, 0], 0, {
+  valveCover: def('valve-cover', 'Supap kapağı', 'valve-cover', [0, 540, 0], 0, {
     function: 'Eksantrik ve supap mekanizmasını örter, yağın dışarı sızmasını ve kirin girmesini önler.',
     material: 'Alüminyum döküm, siyah krinkle (buruşuk) boya; lastik conta',
     notes: 'Buji kuyuları kapaktan geçer; bobinler kapağın üstünden takılır. Kapakta karter havalandırması ve yağ doldurma ağzı bulunur.',
+  }),
+  // ------------------------------------------------------------ manifolds, chain cover (phase 5)
+  intakeManifold: def('intake-manifold', 'Emme manifoldu', 'intake-manifold', [0, 60, -260], 0, {
+    function:
+      'Gaz kelebeğinden gelen havayı plenumda (dağıtma odası) toplar ve dört eşit boylu kanal (runner) ile silindirlere dağıtır.',
+    material: 'Alüminyum döküm (ya da cam elyaf takviyeli poliamid); kelebek gövdesinde pirinç/çelik kelebek plaka',
+    notes:
+      'Kanal boyu motorun “nefes aldığı” devri belirler: emme supabı kapandığında kanalda geri yansıyan basınç dalgası, doğru devirde bir sonraki emmeye yetişip silindiri fazladan doldurur (ram / rezonans etkisi). Kelebek plaka, benzinli motorda yükü (torku) havayı kısarak ayarlar; kısmi yükte manifoldda vakum oluşur.',
+  }),
+  exhaustManifold: def('exhaust-manifold', 'Egzoz manifoldu', 'exhaust-manifold', [0, -40, 240], 0, {
+    function: 'Dört silindirin egzoz gazını toplayıp tek bir çıkışa (katalitik konvertöre) yönlendirir.',
+    material: 'Sfero / silisyum-molibdenli dökme demir (ya da paslanmaz çelik boru), ısıya dayanıklı',
+    notes:
+      '4’ü 1’e (4-into-1) birleşim: ateşleme sırası 1-3-4-2 olduğu için birleşim noktasına her 180° krank açısında bir darbe gelir. Doğru boru boyunda, bir silindirin egzoz darbesinin arkasındaki düşük basınç dalgası binişme sırasında diğer silindirden yanmış gazı emer (scavenging). Çalışırken 800–900 °C’ye ısınır.',
+  }),
+  chainCover: def('chain-cover', 'Zincir kapağı', 'chain-cover', [-330, 0, 0], 0, {
+    function: 'Zamanlama zincirini, dişlileri ve gergiyi örter; zinciri yağlayan yağı içeride tutar.',
+    material: 'Alüminyum döküm (ya da sac/plastik), sıvı conta ile; krank ucunda keçe yuvası',
+    notes: 'Zincir motor yağıyla yağlanır ve ömür boyu dayanacak şekilde tasarlanır; triger kayışından farklı olarak periyodik değişim gerektirmez (ama gergi ve kızaklar aşınabilir).',
   }),
 } as const;

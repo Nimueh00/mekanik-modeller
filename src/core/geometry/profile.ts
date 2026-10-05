@@ -153,6 +153,22 @@ export function extrudeAlongY(shape: Shape, y0: number, y1: number, bevel = 0, c
   return crease(g);
 }
 
+/** Extrude a shape drawn in the (x, y) plane (looking down −Z) along +Z from z0 to z1. */
+export function extrudeAlongZ(shape: Shape, z0: number, z1: number, bevel = 0, curveSegments = 24): BufferGeometry {
+  const depth = z1 - z0 - 2 * bevel;
+  const g = new ExtrudeGeometry(shape, {
+    depth: Math.max(depth, 0.01),
+    bevelEnabled: bevel > 0,
+    bevelThickness: bevel,
+    bevelSize: bevel,
+    bevelOffset: -bevel,
+    bevelSegments: bevel > 0 ? 2 : 0,
+    curveSegments,
+  });
+  g.translate(0, 0, z0 + bevel);
+  return crease(g);
+}
+
 /**
  * Smooth normals across shallow angles, hard edges above `angleDeg`. Gives
  * crisp chamfers/steps and smooth cylinders from the same mesh.
