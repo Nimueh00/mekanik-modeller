@@ -8,6 +8,8 @@ export type LayerId = string;
 export interface LayerDef {
   id: LayerId;
   nameTr: string;
+  /** Short caption for layer chips. */
+  shortTr?: string;
   /** 1 = removed first. Drives the order of the explode timeline. */
   order: number;
 }
@@ -98,6 +100,17 @@ export class PartRegistry {
 
   layerList(): LayerDef[] {
     return [...this.layers.values()].sort((a, b) => a.order - b.order);
+  }
+
+  /** Layers that currently own at least one part, in teardown order. */
+  populatedLayers(): LayerDef[] {
+    return this.layerList().filter((l) => this.inLayer(l.id).length > 0);
+  }
+
+  layer(id: LayerId): LayerDef {
+    const l = this.layers.get(id);
+    if (!l) throw new Error(`unknown layer "${id}"`);
+    return l;
   }
 
   /** Apply an explode amount (0..1) per part; the timeline lives in a later phase. */

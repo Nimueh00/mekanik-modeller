@@ -43,7 +43,11 @@ export class Stage {
   readonly camera: PerspectiveCamera;
   readonly controls: OrbitControls;
   readonly keyLight: DirectionalLight;
+  readonly floor: Mesh;
+  /** Extra zoom-out factor (0..1] applied on top of the panel-aware fit; used while exploded. */
+  private fit = 1;
   private callbacks: FrameCallback[] = [];
+  private lateCallbacks: FrameCallback[] = [];
   private timer = new Timer();
   private rightInset = 0;
   private bottomInset = 0;
@@ -123,6 +127,7 @@ export class Stage {
     floor.receiveShadow = true;
     floor.name = 'floor';
     this.scene.add(floor);
+    this.floor = floor;
 
     window.addEventListener('resize', () => this.resize());
     this.resize();
@@ -152,8 +157,15 @@ export class Stage {
     // narrower than the subject's framing aspect (portrait phones).
     const freeH = Math.max(1, h - bottom);
     const freeAspect = (w - right) / freeH;
-    this.camera.zoom = (freeH / h) * Math.min(1, freeAspect / this.opts.framingAspect);
+    this.camera.zoom = (freeH / h) * Math.min(1, freeAspect / this.opts.framingAspect) * this.fit;
     this.camera.updateProjectionMatrix();
+  }
+
+  /** Zoom out to keep a spread-out subject in view (1 = default framing). */
+  setFit(f: number): void {
+    if (Math.abs(f - this.fit) < 1e-4) return;
+    this.fit = f;
+    this.resize();
   }
 
   private adaptResolution(dt: number): void {
@@ -178,6 +190,11 @@ export class Stage {
     }
   }
 
+  /** Runs after the controls were updated, right before rendering (for screen-space overlays). */
+  onLateFrame(cb: FrameCallback): void {
+    this.lateCallbacks.push(cb);
+  }
+
   onFrame(cb: FrameCallback): void {
     this.callbacks.push(cb);
   }
@@ -195,6 +212,8 @@ export class Stage {
       this.adaptResolution(dt);
       for (const cb of this.callbacks) cb(dt, t);
       this.controls.update();
+      this.camera.updateMatrixWorld();
+      for (const cb of this.lateCallbacks) cb(dt, t);
       this.renderer.render(this.scene, this.camera);
     };
     this.renderer.setAnimationLoop(loop);

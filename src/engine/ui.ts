@@ -110,6 +110,12 @@ export function buildEngineUi(panel: Panel, clock: MachineClock, engine: Engine)
   );
   viewSec.note('Blok, gömlekler, ana yatak kapakları ve karter; silindir ekseninden kesilmiş, saydam ya da tam gösterilir.');
 
+  // ---------- Kesit ve çevrim göstergesi (Faz 4) ----------
+  const cycleSec = panel.section('Çevrim göstergesi');
+  cycleSec.append(placeholder('Emme · Sıkıştırma · Genişleme · Egzoz zamanları ve canlı P-V diyagramı Faz 4’te burada görünecek.'));
+  const cutSec = panel.section('Kesit görünümü');
+  cutSec.append(placeholder('Silindir ekseninden geçen taramalı kesit düzlemi Faz 4’te eklenecek (şimdilik “Görünüm” bölümündeki Kesit/Saydam/Katı).'));
+
   const footer = panel.footer('');
 
   // keyboard
@@ -134,6 +140,13 @@ export function buildEngineUi(panel: Panel, clock: MachineClock, engine: Engine)
     gauge.update(a);
     footer.textContent = `${specLine} · ${Math.round(fps)} fps`;
   };
+}
+
+function placeholder(text: string): HTMLElement {
+  const d = document.createElement('div');
+  d.className = 'pnl-placeholder';
+  d.textContent = text;
+  return d;
 }
 
 /** Circular crank-angle dial (0–720°) plus a piston-height bar for each cylinder. */
