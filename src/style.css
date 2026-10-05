@@ -163,3 +163,70 @@ body {
     letter-spacing: 0.14em;
   }
 }
+
+/* labels */
+.lbl-layer {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 4;
+  overflow: hidden;
+  transition: opacity 0.25s;
+}
+.lbl-layer.is-off {
+  opacity: 0;
+}
+.lbl-svg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+.lbl-svg line {
+  stroke: rgba(214, 182, 118, 0.7);
+  stroke-width: 1;
+  opacity: 0;
+  transition: opacity 0.25s;
+}
+.lbl-svg circle {
+  fill: #e2c483;
+  stroke: rgba(10, 8, 6, 0.8);
+  stroke-width: 1.5;
+  opacity: 0;
+  transition: opacity 0.25s;
+}
+.lbl {
+  position: absolute;
+  left: 0;
+  top: 0;
+  appearance: none;
+  font: inherit;
+  font-size: 12.5px;
+  font-weight: 500;
+  white-space: nowrap;
+  padding: 4px 11px;
+  border-radius: 6px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: rgba(12, 10, 8, 0.82);
+  color: #f0e9da;
+  cursor: pointer;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.25s, border-color 0.2s, background 0.2s;
+}
+.lbl.is-visible {
+  opacity: 1;
+  pointer-events: auto;
+}
+.lbl:hover,
+.lbl.is-selected {
+  border-color: rgba(226, 196, 131, 0.85);
+  background: rgba(54, 40, 18, 0.9);
+}
+
+@media (max-width: 760px) {
+  .lbl {
+    font-size: 11px;
+    padding: 3px 8px;
+  }
+}

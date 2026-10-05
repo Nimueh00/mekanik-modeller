@@ -1,30 +1,9 @@
-import { Vector3 } from 'three';
 import type { MachineClock } from '../core/clock';
-import type { Stage } from '../core/stage';
 import type { Panel } from '../core/ui/panel';
 import type { BlockView, Engine } from './engine';
 import { cylinderCrankAngle, pistonDrop } from './kinematics';
-import { HEAD_SECTION_X } from './parts/cylinderHead';
-import { CHAIN_X } from './parts/timingChain';
 import { DISPLACEMENT_CC, SPECS } from './specs';
 import { cycleAngle, STROKE_TR, strokeOf, valveLift } from './timing';
-
-export type ViewId = 'exhibit' | 'front' | 'side' | 'top' | 'chain' | 'crank' | 'valvetrain';
-
-/** Camera presets (VISION §5). Phase 3 can tune them; positions are in mm. */
-export const VIEWS: Record<ViewId, { label: string; position: Vector3; target: Vector3 }> = {
-  exhibit: { label: 'Sergi', position: new Vector3(640, 470, 1180), target: new Vector3(0, 105, 0) },
-  front: { label: 'Ön', position: new Vector3(0, 150, 1450), target: new Vector3(0, 105, 0) },
-  side: { label: 'Yan', position: new Vector3(1350, 170, 0), target: new Vector3(0, 105, 0) },
-  top: { label: 'Üst', position: new Vector3(0, 1500, 60), target: new Vector3(0, 105, 0) },
-  chain: { label: 'Zincir tarafı', position: new Vector3(CHAIN_X - 760, 300, 330), target: new Vector3(CHAIN_X, 150, 0) },
-  crank: { label: 'Krank', position: new Vector3(330, 40, 560), target: new Vector3(0, 20, 0) },
-  valvetrain: {
-    label: 'Supap mekanizması',
-    position: new Vector3(HEAD_SECTION_X + 440, 330, 170),
-    target: new Vector3(HEAD_SECTION_X, 262, 0),
-  },
-};
 
 type SpeedId = 'pause' | 's50' | 's10' | 's4' | 'real';
 const SPEEDS: Record<Exclude<SpeedId, 'pause'>, number> = { s50: 1 / 50, s10: 1 / 10, s4: 1 / 4, real: 1 };
@@ -41,23 +20,7 @@ const svg = <K extends keyof SVGElementTagNameMap>(tag: K, attrs: Record<string,
  * final panel will have them (VISION §5); phase 3 inserts "İçini aç",
  * "Bakış açısı" and "Katmanlar" above "Zaman".
  */
-export function buildEngineUi(panel: Panel, clock: MachineClock, engine: Engine, stage: Stage): (fps: number) => void {
-  // ---------- Bakış açısı ----------
-  const viewIds = Object.keys(VIEWS) as ViewId[];
-  const camSec = panel.section('Bakış açısı');
-  const camGrid = camSec.buttons<ViewId>(
-    viewIds.map((id) => ({ id, label: VIEWS[id].label, span: id === 'valvetrain' ? 2 : 1 })),
-    {
-      columns: 3,
-      selected: 'exhibit',
-      onSelect: (id) => {
-        stage.flyTo(VIEWS[id].position, VIEWS[id].target);
-        camGrid.setSelected(id);
-      },
-    },
-  );
-  stage.controls.addEventListener('start', () => camGrid.setSelected(null));
-
+export function buildEngineUi(panel: Panel, clock: MachineClock, engine: Engine): (fps: number) => void {
   // ---------- Zaman ----------
   const time = panel.section('Zaman');
   let lastSpeed: Exclude<SpeedId, 'pause'> = 's10';
@@ -159,6 +122,12 @@ export function buildEngineUi(panel: Panel, clock: MachineClock, engine: Engine,
     'Kesit: blok ve karter silindir eksenlerinden boyuna, silindir kapağı ve supap kapağı 4. silindirin arka supaplarından enine kesilir. Saydam: sabit gövdeler yarı saydam.',
   );
 
+  // ---------- Kesit ve çevrim göstergesi (Faz 4) ----------
+  const cycleSec = panel.section('Çevrim göstergesi');
+  cycleSec.append(placeholder('Emme · Sıkıştırma · Genişleme · Egzoz zamanları ve canlı P-V diyagramı Faz 4’te burada görünecek.'));
+  const cutSec = panel.section('Kesit görünümü');
+  cutSec.append(placeholder('Silindir ekseninden geçen taramalı kesit düzlemi Faz 4’te eklenecek (şimdilik “Görünüm” bölümündeki Kesit/Saydam/Katı).'));
+
   const footer = panel.footer('');
 
   // keyboard
@@ -188,6 +157,13 @@ export function buildEngineUi(panel: Panel, clock: MachineClock, engine: Engine,
     gauge.update(a);
     footer.textContent = `${specLine} · ${Math.round(fps)} fps`;
   };
+}
+
+function placeholder(text: string): HTMLElement {
+  const d = document.createElement('div');
+  d.className = 'pnl-placeholder';
+  d.textContent = text;
+  return d;
 }
 
 /** Circular crank-angle dial (0–720°) plus a piston-height bar for each cylinder. */

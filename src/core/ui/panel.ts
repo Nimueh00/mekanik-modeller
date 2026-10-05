@@ -93,6 +93,39 @@ export class PanelSection {
     return api;
   }
 
+  /** Pill-shaped on/off toggles. */
+  chips(
+    options: { id: string; label: string; title?: string }[],
+    onToggle: (id: string, on: boolean) => void,
+  ): { el: HTMLElement; set(id: string, on: boolean): void } {
+    const wrap = h('div', 'pnl-chips');
+    const byId = new Map<string, HTMLButtonElement>();
+    for (const o of options) {
+      const b = h('button', 'pnl-chip is-on', o.label);
+      b.type = 'button';
+      if (o.title) b.title = o.title;
+      b.setAttribute('aria-pressed', 'true');
+      b.addEventListener('click', () => {
+        const on = !b.classList.contains('is-on');
+        b.classList.toggle('is-on', on);
+        b.setAttribute('aria-pressed', String(on));
+        onToggle(o.id, on);
+      });
+      byId.set(o.id, b);
+      wrap.append(b);
+    }
+    this.body.append(wrap);
+    return {
+      el: wrap,
+      set(id, on) {
+        const b = byId.get(id);
+        if (!b) return;
+        b.classList.toggle('is-on', on);
+        b.setAttribute('aria-pressed', String(on));
+      },
+    };
+  }
+
   slider(o: SliderOptions): Slider {
     const wrap = h('div', 'pnl-slider');
     const row = h('div', 'pnl-slider-row');
@@ -129,6 +162,11 @@ export class PanelSection {
     api.set(o.value);
     this.body.append(wrap);
     return api;
+  }
+
+  /** Collapsible/scrollable-into-view helper for sections that update dynamically. */
+  scrollIntoView(): void {
+    this.el.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
   }
 
   readout(label: string, initial = '—'): Readout {

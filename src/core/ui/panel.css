@@ -148,6 +148,89 @@
   pointer-events: auto;
 }
 
+/* chips */
+.pnl-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+}
+.pnl-chip {
+  appearance: none;
+  font: inherit;
+  font-size: 12px;
+  padding: 5px 12px;
+  border-radius: 999px;
+  color: var(--pnl-muted);
+  background: transparent;
+  border: 1px solid var(--pnl-btn-border);
+  cursor: pointer;
+  text-decoration: line-through;
+  text-decoration-color: rgba(255, 255, 255, 0.25);
+  transition: background 0.15s, border-color 0.15s, color 0.15s;
+}
+.pnl-chip.is-on {
+  color: var(--pnl-text);
+  text-decoration: none;
+  border-color: var(--pnl-active-border);
+  background: rgba(201, 169, 106, 0.1);
+}
+.pnl-chip:hover {
+  border-color: rgba(255, 255, 255, 0.3);
+}
+.pnl-chip:focus-visible {
+  outline: 1px solid var(--pnl-gold);
+  outline-offset: 2px;
+}
+
+/* part info card */
+.part-info {
+  padding: 12px 14px;
+  border: 1px solid var(--pnl-border);
+  border-radius: 9px;
+  background: rgba(201, 169, 106, 0.045);
+}
+.part-info-name {
+  margin: 0 0 8px;
+  font-family: var(--pnl-serif);
+  font-weight: 600;
+  font-size: 19px;
+  letter-spacing: 0.02em;
+  color: #f1e3c4;
+}
+.part-info-row + .part-info-row {
+  margin-top: 9px;
+}
+.part-info-label {
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--pnl-gold);
+}
+.part-info-text {
+  margin: 3px 0 0;
+  font-size: 12.5px;
+  line-height: 1.55;
+  color: var(--pnl-text);
+}
+.part-info-empty {
+  color: var(--pnl-muted);
+  font-size: 12px;
+  line-height: 1.5;
+}
+.part-info-close {
+  float: right;
+}
+.pnl-placeholder {
+  padding: 14px;
+  border: 1px dashed rgba(255, 255, 255, 0.12);
+  border-radius: 9px;
+  color: var(--pnl-muted);
+  font-size: 12px;
+  line-height: 1.5;
+  text-align: center;
+}
+
 /* slider */
 .pnl-slider-row {
   display: flex;

@@ -43,7 +43,11 @@ export class Stage {
   readonly camera: PerspectiveCamera;
   readonly controls: OrbitControls;
   readonly keyLight: DirectionalLight;
+  readonly floor: Mesh;
+  /** Extra zoom-out factor (0..1] applied on top of the panel-aware fit; used while exploded. */
+  private fit = 1;
   private callbacks: FrameCallback[] = [];
+  private lateCallbacks: FrameCallback[] = [];
   private timer = new Timer();
   private rightInset = 0;
   private bottomInset = 0;
@@ -80,9 +84,6 @@ export class Stage {
     this.controls.minDistance = R * 0.3;
     this.controls.maxDistance = R * 8;
     this.controls.update();
-    this.controls.addEventListener('start', () => {
-      this.flight = undefined; // the user takes over
-    });
 
     // Image-based lighting: a neutral studio room, dimmed for the dark look.
     const pmrem = new PMREMGenerator(this.renderer);
@@ -126,6 +127,7 @@ export class Stage {
     floor.receiveShadow = true;
     floor.name = 'floor';
     this.scene.add(floor);
+    this.floor = floor;
 
     window.addEventListener('resize', () => this.resize());
     this.resize();
@@ -155,8 +157,15 @@ export class Stage {
     // narrower than the subject's framing aspect (portrait phones).
     const freeH = Math.max(1, h - bottom);
     const freeAspect = (w - right) / freeH;
-    this.camera.zoom = (freeH / h) * Math.min(1, freeAspect / this.opts.framingAspect);
+    this.camera.zoom = (freeH / h) * Math.min(1, freeAspect / this.opts.framingAspect) * this.fit;
     this.camera.updateProjectionMatrix();
+  }
+
+  /** Zoom out to keep a spread-out subject in view (1 = default framing). */
+  setFit(f: number): void {
+    if (Math.abs(f - this.fit) < 1e-4) return;
+    this.fit = f;
+    this.resize();
   }
 
   private adaptResolution(dt: number): void {
@@ -181,42 +190,9 @@ export class Stage {
     }
   }
 
-  private flight?: { p0: Vector3; t0: Vector3; p1: Vector3; t1: Vector3; dur: number; t: number };
-
-  /**
-   * Fly the camera to a new position and orbit target (eased). The motion
-   * curves away from the subject a little, so the camera does not cut
-   * through it on long moves.
-   */
-  flyTo(position: Vector3, target: Vector3, seconds = 1.4): void {
-    this.flight = {
-      p0: this.camera.position.clone(),
-      t0: this.controls.target.clone(),
-      p1: position.clone(),
-      t1: target.clone(),
-      dur: Math.max(seconds, 0.01),
-      t: 0,
-    };
-  }
-
-  private stepFlight(dt: number): void {
-    const f = this.flight;
-    if (!f) return;
-    f.t = Math.min(f.dur, f.t + dt);
-    const u = f.t / f.dur;
-    const e = u < 0.5 ? 4 * u * u * u : 1 - Math.pow(-2 * u + 2, 3) / 2; // easeInOutCubic
-    const target = f.t0.clone().lerp(f.t1, e);
-    // interpolate in spherical coordinates around the moving target → an arc, not a chord
-    const a = f.p0.clone().sub(f.t0);
-    const b = f.p1.clone().sub(f.t1);
-    const ra = a.length();
-    const rb = b.length();
-    const dir = a.normalize().lerp(b.normalize(), e);
-    if (dir.lengthSq() < 1e-6) dir.set(0, 1, 0);
-    dir.normalize().multiplyScalar(ra + (rb - ra) * e);
-    this.camera.position.copy(target).add(dir);
-    this.controls.target.copy(target);
-    if (f.t >= f.dur) this.flight = undefined;
+  /** Runs after the controls were updated, right before rendering (for screen-space overlays). */
+  onLateFrame(cb: FrameCallback): void {
+    this.lateCallbacks.push(cb);
   }
 
   onFrame(cb: FrameCallback): void {
@@ -235,8 +211,9 @@ export class Stage {
       this.fps = avg > 0 ? 1 / avg : 0;
       this.adaptResolution(dt);
       for (const cb of this.callbacks) cb(dt, t);
-      this.stepFlight(dt);
       this.controls.update();
+      this.camera.updateMatrixWorld();
+      for (const cb of this.lateCallbacks) cb(dt, t);
       this.renderer.render(this.scene, this.camera);
     };
     this.renderer.setAnimationLoop(loop);
