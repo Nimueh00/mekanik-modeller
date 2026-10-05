@@ -4,8 +4,6 @@ import { subtract, union } from '../../core/geometry/csg';
 import { latheY, merge } from '../../core/geometry/profile';
 import { CAM_JOURNAL_X, HEAD_TOP_Y } from '../headLayout';
 import { CYLINDER_X, SPECS } from '../specs';
-import type { Sectioned } from './block';
-import { sectionCutX } from './cylinderHead';
 
 export const VALVE_COVER = {
   halfLength: SPECS.head.halfLength - 2,
@@ -16,7 +14,7 @@ export const VALVE_COVER = {
 } as const;
 
 export interface ValveCoverGeometry {
-  cover: Sectioned;
+  cover: BufferGeometry;
   hardware: BufferGeometry;
   filler: BufferGeometry;
 }
@@ -105,5 +103,5 @@ export function buildValveCover(): ValveCoverGeometry {
   const fillerG = merge([filler, grip]);
   fillerG.translate(CYLINDER_X[2]! + 44, 0, -71);
 
-  return { cover: { full: shell, cut: sectionCutX(shell) }, hardware: merge(hw), filler: fillerG };
+  return { cover: shell, hardware: merge(hw), filler: fillerG };
 }

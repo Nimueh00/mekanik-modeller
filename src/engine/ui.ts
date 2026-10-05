@@ -3,7 +3,8 @@ import type { Panel } from '../core/ui/panel';
 import type { BlockView, Engine } from './engine';
 import { cylinderCrankAngle, pistonDrop } from './kinematics';
 import { DISPLACEMENT_CC, SPECS } from './specs';
-import { cycleAngle, STROKE_TR, strokeOf, valveLift } from './timing';
+import { CUT_RANGE, type CutMode, type Cutaway, type CycleFocus } from './cutaway';
+import { buildCycleUi } from './cycleUi';
 
 type SpeedId = 'pause' | 's50' | 's10' | 's4' | 'real';
 const SPEEDS: Record<Exclude<SpeedId, 'pause'>, number> = { s50: 1 / 50, s10: 1 / 10, s4: 1 / 4, real: 1 };
@@ -15,12 +16,21 @@ const svg = <K extends keyof SVGElementTagNameMap>(tag: K, attrs: Record<string,
   return e;
 };
 
+export interface EngineUiHooks {
+  focus: CycleFocus;
+  cutaway: Cutaway;
+  /** Called before the view mode swaps materials (lets the selection release its highlight clones). */
+  beforeMaterialSwap: () => void;
+  /** Lets other controls (the "Kesit" camera preset) switch the view mode through the panel. */
+  onViewRequest: (l: (v: BlockView) => void) => void;
+}
+
 /**
- * Phase-1 control panel for the engine. Sections are added in the order the
- * final panel will have them (VISION §5); phase 3 inserts "İçini aç",
- * "Bakış açısı" and "Katmanlar" above "Zaman".
+ * Lower half of the control panel (VISION §5): time, speed, crank angle,
+ * cycle indicator and the cut-away view. "İçini aç", "Bakış açısı",
+ * "Katmanlar" and "Parça bilgisi" come from openUi.ts above these.
  */
-export function buildEngineUi(panel: Panel, clock: MachineClock, engine: Engine): (fps: number) => void {
+export function buildEngineUi(panel: Panel, clock: MachineClock, engine: Engine, o: EngineUiHooks): (fps: number) => void {
   // ---------- Zaman ----------
   const time = panel.section('Zaman');
   let lastSpeed: Exclude<SpeedId, 'pause'> = 's10';
@@ -93,16 +103,11 @@ export function buildEngineUi(panel: Panel, clock: MachineClock, engine: Engine)
   const mech = angSec.readout('Krank konumu (0–360°)');
   const cam = angSec.readout('Eksantrik açısı (½ hız)');
 
-  // ---------- Supaplar (1. silindir) ----------
-  const valveSec = panel.section('Supaplar — 1. silindir');
-  const stroke = valveSec.readout('Zaman');
-  const cyc = valveSec.readout('Çevrim açısı (ÜÖN ateşleme = 0°)');
-  const inLift = valveSec.readout('Emme supabı lifti');
-  const exLift = valveSec.readout('Egzoz supabı lifti');
-  valveSec.note('Emme 10° ÜÖN önce açılır, 50° AÖN sonra kapanır · Egzoz 50° AÖN önce açılır, 10° ÜÖN sonra kapanır · Ateşleme sırası 1-3-4-2.');
+  // ---------- Çevrim göstergesi (Faz 4) ----------
+  const updateCycle = buildCycleUi(panel, clock, o.focus);
 
-  // ---------- Görünüm ----------
-  const viewSec = panel.section('Görünüm');
+  // ---------- Kesit görünümü ----------
+  const viewSec = panel.section('Kesit görünümü');
   const viewGrid = viewSec.buttons<BlockView>(
     [
       { id: 'section', label: 'Kesit' },
@@ -112,21 +117,49 @@ export function buildEngineUi(panel: Panel, clock: MachineClock, engine: Engine)
     {
       columns: 3,
       selected: engine.view,
-      onSelect: (v) => {
-        engine.setView(v);
-        viewGrid.setSelected(v);
+      onSelect: (v) => setView(v),
+    },
+  );
+  const setView = (v: BlockView) => {
+    o.beforeMaterialSwap();
+    engine.setView(v);
+    viewGrid.setSelected(v);
+  };
+  o.onViewRequest((v) => setView(v));
+  const cutGrid = viewSec.buttons<CutMode>(
+    [
+      { id: 'transverse', label: 'Enine', title: 'Krank eksenine dik düzlem, seçili silindirin ekseni yakınından' },
+      { id: 'longitudinal', label: 'Boyuna', title: 'Dört silindir ekseninden geçen düzlem' },
+    ],
+    {
+      columns: 2,
+      selected: o.cutaway.mode,
+      onSelect: (m) => {
+        o.cutaway.setMode(m);
+        cutGrid.setSelected(m);
+        syncSlider();
+        if (engine.view !== 'section') setView('section');
       },
     },
   );
+  const slider = viewSec.slider({
+    min: CUT_RANGE.longitudinal.min,
+    max: CUT_RANGE.longitudinal.max,
+    step: 0.5,
+    value: o.cutaway.offset[o.cutaway.mode],
+    format: (v) => `${v > 0 ? '+' : ''}${v.toFixed(1)} mm`,
+    onInput: (v) => {
+      const r = CUT_RANGE[o.cutaway.mode];
+      o.cutaway.setOffset(Math.min(r.max, Math.max(r.min, v)));
+      if (engine.view !== 'section') setView('section');
+    },
+    minLabel: 'Düzlem konumu',
+    maxLabel: 'eksenden uzaklık',
+  });
+  const syncSlider = () => slider.set(o.cutaway.offset[o.cutaway.mode]);
   viewSec.note(
-    'Kesit: blok ve karter silindir eksenlerinden boyuna, silindir kapağı ve supap kapağı 4. silindirin arka supaplarından enine kesilir. Saydam: sabit gövdeler yarı saydam.',
+    'Enine: krank eksenine dik, seçili silindirden; Boyuna: dört silindir ekseninden. Kesilen katı yüzeyler kapalı ve malzemeye göre taralı (alüminyum 45°, çelik −45° sık, bronz, conta). Seçili silindirin hareketli parçaları kesilmez. Saydam: sabit gövdeler yarı saydam.',
   );
-
-  // ---------- Kesit ve çevrim göstergesi (Faz 4) ----------
-  const cycleSec = panel.section('Çevrim göstergesi');
-  cycleSec.append(placeholder('Emme · Sıkıştırma · Genişleme · Egzoz zamanları ve canlı P-V diyagramı Faz 4’te burada görünecek.'));
-  const cutSec = panel.section('Kesit görünümü');
-  cutSec.append(placeholder('Silindir ekseninden geçen taramalı kesit düzlemi Faz 4’te eklenecek (şimdilik “Görünüm” bölümündeki Kesit/Saydam/Katı).'));
 
   const footer = panel.footer('');
 
@@ -148,22 +181,12 @@ export function buildEngineUi(panel: Panel, clock: MachineClock, engine: Engine)
     angle.set(`${a.toFixed(1)}°`);
     mech.set(`${(a % 360).toFixed(1)}°`);
     cam.set(`${(a / 2).toFixed(1)}°`);
-    stroke.set(STROKE_TR[strokeOf(0, a)]);
-    cyc.set(`${cycleAngle(0, a).toFixed(1)}°`);
-    inLift.set(`${valveLift('intake', 0, a).toFixed(2)} mm`);
-    exLift.set(`${valveLift('exhaust', 0, a).toFixed(2)} mm`);
+    updateCycle();
     const visRpm = clock.paused ? 0 : clock.rpm * clock.timeScale;
     effective.set(clock.paused ? 'durduruldu' : `${visRpm.toLocaleString('tr-TR', { maximumFractionDigits: 1 })} dev/dk`);
     gauge.update(a);
     footer.textContent = `${specLine} · ${Math.round(fps)} fps`;
   };
-}
-
-function placeholder(text: string): HTMLElement {
-  const d = document.createElement('div');
-  d.className = 'pnl-placeholder';
-  d.textContent = text;
-  return d;
 }
 
 /** Circular crank-angle dial (0–720°) plus a piston-height bar for each cylinder. */

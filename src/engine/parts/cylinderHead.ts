@@ -1,4 +1,4 @@
-import { BoxGeometry, type BufferGeometry, CubicBezierCurve3, CylinderGeometry, Matrix4, Vector3 } from 'three';
+import { type BufferGeometry, CubicBezierCurve3, CylinderGeometry, Matrix4, Vector3 } from 'three';
 import { intersect, subtract, union } from '../../core/geometry/csg';
 import {
   circlePts,
@@ -27,29 +27,11 @@ import {
   type ValveAxis,
 } from '../headLayout';
 import { CYLINDER_X, SPECS } from '../specs';
-import { sectionCut, type Sectioned } from './block';
 
 const H = SPECS.head;
 const VT = SPECS.valveTrain;
 const CAM = SPECS.cam;
 const DEG = Math.PI / 180;
-
-/**
- * Section plane of the head: a transverse cut through the rear valves of
- * cylinder 4. It shows the whole valve train in profile — port, valve,
- * spring, bucket and cam lobe — the way a cutaway exhibition engine does.
- */
-export const HEAD_SECTION_X = CYLINDER_X[CYLINDER_X.length - 1]! + SPECS.piston.valvePocket.offsetX;
-
-/** Removes everything behind x = xCut (the +X end). */
-export function sectionCutX(g: BufferGeometry, xCut = HEAD_SECTION_X, creaseDeg = 35): BufferGeometry {
-  const big = 2000;
-  const box = new BoxGeometry(big, big, big);
-  box.translate(xCut + big / 2, 0, 0);
-  return subtract(g, [box], creaseDeg);
-}
-
-const sectionedX = (full: BufferGeometry): Sectioned => ({ full, cut: sectionCutX(full) });
 
 /** Geometry built along +Y (lathe), placed on a valve axis with its origin at station 0. */
 export function onValveAxis(g: BufferGeometry, v: ValveAxis): BufferGeometry {
@@ -68,26 +50,29 @@ export function injectorAxis(cylinder: number): { tip: Vector3; dir: Vector3 } {
 }
 
 /** Port layout: exit height on the side face, trunk / branch / throat radii. */
-const PORT = {
+export const PORT = {
   intake: { exitY: 240, trunkR: 15.5, branchR: 12.5, sign: -1 },
   exhaust: { exitY: 236, trunkR: 13.5, branchR: 11, sign: 1 },
 } as const;
 
-/** Siamesed port for one cylinder and side: one trunk at the flange, one branch per valve. */
-function portCutter(cylinder: number, kind: 'intake' | 'exhaust'): BufferGeometry {
+export interface PortCurves {
+  /** Siamesed trunk, from inside the head (z = ±56) out to the side face. */
+  trunk: CubicBezierCurve3;
+  trunkRadius: (t: number) => number;
+  /** One branch per valve (front, rear), from just below the valve seat to the trunk. */
+  branches: { valve: ValveAxis; curve: CubicBezierCurve3; radius: (t: number) => number }[];
+}
+
+/** Centre lines of a cylinder's port (shared by the CSG cutter and the gas-flow particles). */
+export function portCurves(cylinder: number, kind: 'intake' | 'exhaust'): PortCurves {
   const P = PORT[kind];
   const cx = CYLINDER_X[cylinder]!;
   const zFace = P.sign * (H.topHalfWidth + 6);
-  const trunk = sweepTube(
-    new CubicBezierCurve3(
-      new Vector3(cx, P.exitY, P.sign * 56),
-      new Vector3(cx, P.exitY, P.sign * 70),
-      new Vector3(cx, P.exitY, P.sign * 85),
-      new Vector3(cx, P.exitY, zFace),
-    ),
-    (t) => P.trunkR - 1.5 * (1 - t),
-    6,
-    28,
+  const trunk = new CubicBezierCurve3(
+    new Vector3(cx, P.exitY, P.sign * 56),
+    new Vector3(cx, P.exitY, P.sign * 70),
+    new Vector3(cx, P.exitY, P.sign * 85),
+    new Vector3(cx, P.exitY, zFace),
   );
   const branches = VALVES.filter((v) => v.cylinder === cylinder && v.kind === kind).map((v) => {
     const throatR = v.diameter / 2 - 2.5;
@@ -95,18 +80,29 @@ function portCutter(cylinder: number, kind: 'intake' | 'exhaust'): BufferGeometr
     const p1 = stationPoint(v, 20);
     const p2 = new Vector3(v.face.x * 0.7 + cx * 0.3, P.exitY - 1, P.sign * 46);
     const p3 = new Vector3(v.face.x * 0.45 + cx * 0.55, P.exitY, P.sign * 66);
-    return sweepTube(new CubicBezierCurve3(p0, p1, p2, p3), (t) => throatR + (P.branchR - throatR) * Math.min(1, t * 1.6), 24, 28);
+    return {
+      valve: v,
+      curve: new CubicBezierCurve3(p0, p1, p2, p3),
+      radius: (t: number) => throatR + (P.branchR - throatR) * Math.min(1, t * 1.6),
+    };
   });
+  return { trunk, trunkRadius: (t) => P.trunkR - 1.5 * (1 - t), branches };
+}
+
+/** Siamesed port for one cylinder and side: one trunk at the flange, one branch per valve. */
+function portCutter(cylinder: number, kind: 'intake' | 'exhaust'): BufferGeometry {
+  const pc = portCurves(cylinder, kind);
+  const trunk = sweepTube(pc.trunk, pc.trunkRadius, 6, 28);
+  const branches = pc.branches.map((b) => sweepTube(b.curve, b.radius, 24, 28));
   return union(trunk, branches);
 }
 
 export interface HeadGeometry {
-  head: Sectioned;
+  head: BufferGeometry;
   /** Valve guides (bronze) and hardened spring-seat washers. */
-  guides: Sectioned;
-  gasket: Sectioned;
-  /** Section view drops the bolts in the removed (+Z, and behind the head cut) regions. */
-  bolts: Sectioned;
+  guides: BufferGeometry;
+  gasket: BufferGeometry;
+  bolts: BufferGeometry;
 }
 
 export function buildCylinderHead(): HeadGeometry {
@@ -346,9 +342,7 @@ export function buildCylinderHead(): HeadGeometry {
 
   // ---- head bolts (flanged hex head, sitting in the counterbores) ----
   const bolts: BufferGeometry[] = [];
-  const keptBolts: BufferGeometry[] = [];
   for (const b of HEAD_BOLTS) {
-    const start = bolts.length;
     const shaft = new CylinderGeometry(hb.diameter / 2, hb.diameter / 2, seatY - (SPECS.block.deckHeight - hb.threadDepth + 4), 20);
     shaft.translate(b.x, (seatY + SPECS.block.deckHeight - hb.threadDepth + 4) / 2, b.z);
     const flange = latheY(
@@ -365,14 +359,13 @@ export function buildCylinderHead(): HeadGeometry {
     const hex = new CylinderGeometry(hexR, hexR, hb.headHeight - 1.6, 6);
     hex.translate(b.x, seatY + 1.6 + (hb.headHeight - 1.6) / 2, b.z);
     bolts.push(shaft, flange, hex);
-    if (b.z < 0 && b.x < HEAD_SECTION_X) keptBolts.push(...bolts.slice(start));
   }
 
   return {
-    head: sectionedX(head),
-    guides: sectionedX(merge(guideParts)),
-    gasket: { full: merge([gasketFlat, ...rings]), cut: sectionCut(merge([gasketFlat, ...rings])) },
-    bolts: { full: merge(bolts), cut: merge(keptBolts) },
+    head,
+    guides: merge(guideParts),
+    gasket: merge([gasketFlat, ...rings]),
+    bolts: merge(bolts),
   };
 }
 

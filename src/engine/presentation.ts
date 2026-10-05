@@ -1,6 +1,6 @@
 import type { CameraPreset } from '../core/cameraRig';
 import type { LabelDef } from '../core/labels';
-import { HEAD_SECTION_X } from './parts/cylinderHead';
+import { CYLINDER_X, SPECS } from './specs';
 import { CHAIN_X } from './parts/timingChain';
 
 /**
@@ -8,18 +8,23 @@ import { CHAIN_X } from './parts/timingChain';
  * "Ön" looks at the long (intake/exhaust-side) face, "Yan" down the crank axis
  * from the flywheel end, "Zincir tarafı" from the timing-chain end (-X).
  */
+/** Transverse plane through the rear valves of cylinder 4 (the valve-train view). */
+const REAR_VALVES_X = CYLINDER_X[CYLINDER_X.length - 1]! + SPECS.piston.valvePocket.offsetX;
+
 export const CAMERA_PRESETS: CameraPreset[] = [
   { id: 'show', label: 'Sergi', position: [640, 470, 1180], target: [0, 105, 0] },
   { id: 'front', label: 'Ön', position: [0, 150, 1450], target: [0, 105, 0] },
   { id: 'side', label: 'Yan', position: [1350, 170, 0], target: [0, 105, 0] },
   { id: 'top', label: 'Üst', position: [0, 1500, 60], target: [0, 105, 0] },
   { id: 'chain', label: 'Zincir tarafı', position: [CHAIN_X - 760, 300, 330], target: [CHAIN_X, 150, 0] },
+  // framing and the cut itself are filled in by the app (they follow the focused cylinder)
+  { id: 'section', label: 'Kesit', title: 'Seçili silindirin kesitine bak', position: [700, 300, 150], target: [0, 180, 0] },
   { id: 'crank', label: 'Krank', position: [330, 40, 560], target: [0, 20, 0], follow: { part: 'crankshaft' } },
   {
     id: 'valves',
     label: 'Supap mekanizması',
-    position: [HEAD_SECTION_X + 440, 330, 170],
-    target: [HEAD_SECTION_X, 262, 0],
+    position: [REAR_VALVES_X + 440, 330, 170],
+    target: [REAR_VALVES_X, 262, 0],
     follow: { layer: 'valvetrain' },
   },
 ];

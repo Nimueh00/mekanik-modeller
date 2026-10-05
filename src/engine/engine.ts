@@ -11,16 +11,17 @@ import {
 import { merge } from '../core/geometry/profile';
 import type { MaterialKey, MaterialLibrary } from '../core/materials';
 import type { PartNode, PartRegistry } from '../core/registry';
+import type { CapStyle, SectionView } from '../core/section';
 import { LAYERS, PARTS } from './catalog';
 import { cylinderCrankAngle, sliderCrankPose } from './kinematics';
-import { buildBlock, buildMainCap, buildOilPan, type Sectioned } from './parts/block';
+import { buildBlock, buildMainCap, buildOilPan } from './parts/block';
 import { buildConnectingRod } from './parts/connectingRod';
 import { buildCrankshaft } from './parts/crankshaft';
 import { buildFlywheel } from './parts/flywheel';
 import { buildPiston } from './parts/piston';
 import { CAM_CENTRE, CAM_JOURNAL_X, VALVES, type ValveAxis } from './headLayout';
 import { buildCamCap, buildCamshaft } from './parts/camshaft';
-import { buildCylinderHead, onValveAxis, sectionCutX } from './parts/cylinderHead';
+import { buildCylinderHead, onValveAxis } from './parts/cylinderHead';
 import { buildInjectors, buildPlugs } from './parts/plugsInjectors';
 import { buildChainLink, buildGuides, buildSprockets, buildTimingCase, CHAIN_LINKS, CHAIN_X, chainPins } from './parts/timingChain';
 import { buildValveCover } from './parts/valveCover';
@@ -32,11 +33,42 @@ export type BlockView = 'section' | 'ghost' | 'solid';
 
 const DEG = Math.PI / 180;
 
-interface SectionedMesh {
+interface StaticMesh {
   mesh: Mesh;
-  geo: Sectioned;
   solid: Material;
   ghost: Material;
+}
+
+/** Cut-face styles for the section view (hatch angle/pitch differ per material, as in a drawing). */
+export const CAP_STYLES: Record<string, CapStyle> = {
+  alu: { color: '#b9b4aa', line: '#5b5650', angleDeg: 45, spacing: 3.2 },
+  piston: { color: '#d3d0c8', line: '#77736b', angleDeg: -45, spacing: 2.4 },
+  steel: { color: '#8d9196', line: '#3a3c40', angleDeg: -45, spacing: 1.8 },
+  bronze: { color: '#b48f5a', line: '#5e4523', angleDeg: 45, spacing: 1.6 },
+  soft: { color: '#3b3a38', line: '#191817', angleDeg: 0, spacing: 1.4 },
+};
+
+const CAP_OF_MATERIAL: Record<string, string> = {
+  castAluminum: 'alu',
+  pistonAluminum: 'piston',
+  forgedSteel: 'steel',
+  machinedSteel: 'steel',
+  chrome: 'steel',
+  darkSteel: 'steel',
+  chainSteel: 'steel',
+  stampedSteel: 'steel',
+  bronze: 'bronze',
+  crinkleBlack: 'soft',
+  blackPlastic: 'soft',
+  guidePolymer: 'soft',
+  ceramic: 'soft',
+  rubber: 'soft',
+  gasket: 'soft',
+};
+
+/** Cap style of a mesh, from its (library) material name. */
+export function capStyleOf(m: Mesh): string | null {
+  return CAP_OF_MATERIAL[(m.material as Material).name] ?? null;
 }
 
 interface ValvePairNodes {
@@ -68,7 +100,9 @@ export class Engine {
   private camNodes: PartNode[] = [];
   private valvePairs: ValvePairNodes[] = [];
   private chain?: { inner: InstancedMesh; outer: InstancedMesh; joints: InstancedMesh };
-  private sectionedMeshes: SectionedMesh[] = [];
+  private staticMeshes: StaticMesh[] = [];
+  /** Cut-away view (clipping plane + capped, hatched faces); set by the app. */
+  section?: SectionView;
   private ghostCache = new Map<Material, Material>();
   view: BlockView = 'section';
 
@@ -218,7 +252,7 @@ export class Engine {
       const capsAll = merge(caps);
       this.registry.add(
         PARTS.camCaps(kind),
-        this.sectioned({ full: capsAll, cut: sectionCutX(capsAll) }, M('castAluminum')),
+        this.sectioned(capsAll, M('castAluminum')),
         mesh(merge(bolts), M('darkSteel')),
       );
     }
@@ -333,18 +367,19 @@ export class Engine {
 
   setView(view: BlockView): void {
     this.view = view;
-    for (const s of this.sectionedMeshes) {
-      s.mesh.geometry = view === 'section' ? s.geo.cut : s.geo.full;
+    for (const s of this.staticMeshes) {
       s.mesh.material = view === 'ghost' ? s.ghost : s.solid;
       s.mesh.castShadow = view !== 'ghost';
       s.mesh.receiveShadow = view !== 'ghost';
       s.mesh.renderOrder = view === 'ghost' ? 10 : 0;
     }
+    this.section?.setEnabled(view === 'section');
   }
 
-  private sectioned(geo: Sectioned, solid: MeshPhysicalMaterial): Mesh {
-    const m = mesh(geo.cut, solid);
-    this.sectionedMeshes.push({ mesh: m, geo, solid, ghost: this.ghostOf(solid) });
+  /** A static housing part: can be shown solid, as a ghost, or cut by the section plane. */
+  private sectioned(geo: BufferGeometry, solid: MeshPhysicalMaterial): Mesh {
+    const m = mesh(geo, solid);
+    this.staticMeshes.push({ mesh: m, solid, ghost: this.ghostOf(solid) });
     return m;
   }
 

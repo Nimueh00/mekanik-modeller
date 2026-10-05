@@ -11,6 +11,10 @@ export interface CameraPreset {
   target: Vec3;
   /** Part or layer whose explode displacement the view should follow. */
   follow?: { part?: string; layer?: LayerId };
+  /** Computed framing (overrides position/target), e.g. a view that depends on app state. */
+  resolve?: () => { position: Vec3; target: Vec3 };
+  /** Side effect when the preset is chosen (e.g. switch on a cut-away). */
+  onEnter?: () => void;
 }
 
 const ease = (t: number) => (t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2);
@@ -70,10 +74,12 @@ export class CameraRig {
   go(preset: CameraPreset, seconds = 1.3): void {
     const tmp = new Vector3();
     // Compensate the follow displacement we currently carry so presets are expressed in assembled coordinates.
+    preset.onEnter?.();
+    const framing = preset.resolve?.() ?? preset;
     this.follow = preset.follow;
     const toFollow = this.followOffset(preset.follow, new Vector3());
-    const toTarget = new Vector3(...preset.target).add(toFollow);
-    const toPos = new Vector3(...preset.position).add(toFollow);
+    const toTarget = new Vector3(...framing.target).add(toFollow);
+    const toPos = new Vector3(...framing.position).add(toFollow);
     const toOffset = tmp.copy(toPos).sub(toTarget);
     const fromOffset = new Vector3().copy(this.camera.position).sub(this.controls.target);
     this.tween = {

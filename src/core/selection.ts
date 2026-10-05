@@ -1,4 +1,4 @@
-import { Color, type Camera, type Material, type Mesh, type MeshPhysicalMaterial, type Object3D, Raycaster, Vector2 } from 'three';
+import { Color, type Camera, type Material, type Mesh, type MeshPhysicalMaterial, type Object3D, Raycaster, Vector2, type Vector3 } from 'three';
 import type { PartNode, PartRegistry } from './registry';
 
 const GOLD = new Color('#ffb347');
@@ -20,6 +20,8 @@ export class Selection {
   private highlightOf = new Map<Material, MeshPhysicalMaterial>();
   private highlights = new Set<Material>();
   private listeners: ((p: PartNode | null) => void)[] = [];
+  /** Optional hit filter, e.g. to ignore geometry removed by a section plane. */
+  filter?: (object: Object3D, point: Vector3) => boolean;
 
   constructor(
     private dom: HTMLElement,
@@ -54,6 +56,7 @@ export class Selection {
     const hits = this.raycaster.intersectObject(this.registry.root, true);
     for (const h of hits) {
       if (!isVisible(h.object)) continue;
+      if (this.filter && !this.filter(h.object, h.point)) continue;
       const id = h.object.userData.partId as string | undefined;
       if (id) {
         this.select(id);
@@ -75,6 +78,15 @@ export class Selection {
     for (const l of this.listeners) l(this.current);
   }
 
+  /**
+   * Put the base materials back but keep the selection; the highlight is
+   * re-applied on the next update. Call before another system swaps materials.
+   */
+  releaseMaterials(): void {
+    for (const [m, mat] of this.base) if (this.highlights.has(m.material as Material)) m.material = mat;
+    this.base.clear();
+  }
+
   private restore(): void {
     for (const [m, mat] of this.base) if (this.highlights.has(m.material as Material)) m.material = mat;
     this.base.clear();
@@ -86,6 +98,7 @@ export class Selection {
     if (!h) {
       h = (m as MeshPhysicalMaterial).clone();
       h.emissive = GOLD.clone();
+      h.clippingPlanes = m.clippingPlanes; // clone() copies the planes; keep sharing the live ones
       this.highlightOf.set(m, h);
       this.highlights.add(h);
     }

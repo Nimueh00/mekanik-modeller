@@ -2,20 +2,33 @@ import {
   ACESFilmicToneMapping,
   Color,
   DirectionalLight,
+  DoubleSide,
   HemisphereLight,
   Mesh,
+  MeshBasicMaterial,
   PCFShadowMap,
   PerspectiveCamera,
+  type Plane,
   PlaneGeometry,
   PMREMGenerator,
   Scene,
+  ShaderMaterial,
   ShadowMaterial,
   SpotLight,
   SRGBColorSpace,
+  HalfFloatType,
   Timer,
+  Vector2,
   Vector3,
   WebGLRenderer,
+  WebGLRenderTarget,
 } from 'three';
+import { EffectComposer } from 'three/examples/jsm/postprocessing/EffectComposer.js';
+import { Pass } from 'three/examples/jsm/postprocessing/Pass.js';
+import { ShaderPass } from 'three/examples/jsm/postprocessing/ShaderPass.js';
+import { OutputPass } from 'three/examples/jsm/postprocessing/OutputPass.js';
+import { RenderPass } from 'three/examples/jsm/postprocessing/RenderPass.js';
+import { UnrealBloomPass } from 'three/examples/jsm/postprocessing/UnrealBloomPass.js';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import { RoomEnvironment } from 'three/examples/jsm/environments/RoomEnvironment.js';
 
@@ -29,6 +42,17 @@ export interface StageOptions {
   /** Width/height of the default framing; narrower free areas zoom out to keep it in view. */
   framingAspect: number;
 }
+
+/** Layer of bloom sources (emissive effects). */
+export const GLOW_LAYER = 1;
+/** Layer of helper geometry that is drawn normally but never in the glow pass (stencil passes, section caps). */
+export const OVERLAY_LAYER = 2;
+/**
+ * Objects that can hide a bloom source (drawn black in the glow pass). Only
+ * meshes the app puts on this layer are re-rendered there, which keeps the
+ * glow pass much cheaper than a second full scene render.
+ */
+export const OCCLUDER_LAYER = 3;
 
 export type FrameCallback = (dt: number, elapsed: number) => void;
 
@@ -58,11 +82,16 @@ export class Stage {
   private pixelRatio = this.maxPixelRatio;
   private slowFor = 0;
   private fastFor = 0;
+  /** Bloom post-processing; created on first use and run only while `bloom` is on. */
+  private composer?: EffectComposer;
+  private glowComposer?: EffectComposer;
+  private bloomPass?: UnrealBloomPass;
+  private bloom = false;
 
   constructor(private opts: StageOptions) {
     const { container, subjectRadius: R } = opts;
 
-    this.renderer = new WebGLRenderer({ antialias: true, alpha: true, powerPreference: 'high-performance' });
+    this.renderer = new WebGLRenderer({ antialias: true, alpha: true, stencil: true, powerPreference: 'high-performance' });
     this.renderer.setPixelRatio(this.pixelRatio);
     this.renderer.outputColorSpace = SRGBColorSpace;
     this.renderer.toneMapping = ACESFilmicToneMapping;
@@ -75,6 +104,8 @@ export class Stage {
     this.renderer.domElement.classList.add('stage-canvas');
 
     this.camera = new PerspectiveCamera(32, 1, R * 0.02, R * 40);
+    this.camera.layers.enable(GLOW_LAYER);
+    this.camera.layers.enable(OVERLAY_LAYER);
     this.camera.position.copy(opts.cameraPosition);
 
     this.controls = new OrbitControls(this.camera, this.renderer.domElement);
@@ -159,6 +190,70 @@ export class Stage {
     const freeAspect = (w - right) / freeH;
     this.camera.zoom = (freeH / h) * Math.min(1, freeAspect / this.opts.framingAspect) * this.fit;
     this.camera.updateProjectionMatrix();
+    for (const c of [this.composer, this.glowComposer]) {
+      if (!c) continue;
+      c.setPixelRatio(this.renderer.getPixelRatio());
+      c.setSize(w, h);
+    }
+  }
+
+  /**
+   * Selective bloom (VISION §2: only for combustion and the spark).
+   *
+   * Objects on GLOW_LAYER are the only bloom sources: a glow pass renders the
+   * OCCLUDER_LAYER objects in plain black (so a flame hidden behind metal does
+   * not glow through it) and then the glow objects in
+   * colour; the blurred result is added onto the normal render. The two
+   * composers only run while `setBloom(true)`; otherwise the scene is
+   * rendered directly at no extra cost.
+   */
+  setBloom(on: boolean, strength = 1): void {
+    this.bloom = on;
+    if (!on) return;
+    if (!this.composer) this.createBloom();
+    this.bloomPass!.strength = strength;
+  }
+
+  /** Clipping planes applied to the black occluders of the glow pass (e.g. a section plane). */
+  setGlowOccluderClipping(planes: Plane[] | null): void {
+    this.occluder.clippingPlanes = planes;
+    this.occluder.needsUpdate = true;
+  }
+
+  private occluder = new MeshBasicMaterial({ color: 0x000000, side: DoubleSide });
+
+  private createBloom(): void {
+    const size = this.renderer.getDrawingBufferSize(new Vector2());
+    const glow = new EffectComposer(this.renderer, new WebGLRenderTarget(size.x, size.y, { type: HalfFloatType }));
+    glow.renderToScreen = false;
+    glow.addPass(new GlowPass(this.scene, this.camera, this.occluder));
+    this.bloomPass = new UnrealBloomPass(new Vector2(size.x, size.y), 1, 0.5, 0);
+    glow.addPass(this.bloomPass);
+    this.glowComposer = glow;
+
+    const rt = new WebGLRenderTarget(size.x, size.y, { type: HalfFloatType, samples: 4, stencilBuffer: true });
+    const final = new EffectComposer(this.renderer, rt);
+    final.addPass(new RenderPass(this.scene, this.camera));
+    const mix = new ShaderPass(
+      new ShaderMaterial({
+        uniforms: { baseTexture: { value: null }, bloomTexture: { value: glow.renderTarget2.texture } },
+        vertexShader: 'varying vec2 vUv; void main() { vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }',
+        fragmentShader: `
+          uniform sampler2D baseTexture;
+          uniform sampler2D bloomTexture;
+          varying vec2 vUv;
+          void main() {
+            vec4 base = texture2D(baseTexture, vUv);
+            vec3 b = texture2D(bloomTexture, vUv).rgb;
+            gl_FragColor = vec4(base.rgb + b, clamp(base.a + max(b.r, max(b.g, b.b)), 0.0, 1.0));
+          }`,
+      }),
+      'baseTexture',
+    );
+    final.addPass(mix);
+    final.addPass(new OutputPass());
+    this.composer = final;
+    this.resize();
   }
 
   /** Zoom out to keep a spread-out subject in view (1 = default framing). */
@@ -214,8 +309,50 @@ export class Stage {
       this.controls.update();
       this.camera.updateMatrixWorld();
       for (const cb of this.lateCallbacks) cb(dt, t);
-      this.renderer.render(this.scene, this.camera);
+      if (this.bloom && this.composer && this.glowComposer) {
+        this.glowComposer.render(dt);
+        this.composer.render(dt);
+      }
+      else this.renderer.render(this.scene, this.camera);
     };
     this.renderer.setAnimationLoop(loop);
+  }
+}
+
+/**
+ * Renders the bloom sources: OCCLUDER_LAYER objects as black occluders (no
+ * shadow update), then the GLOW_LAYER objects in colour, into the read buffer.
+ */
+class GlowPass extends Pass {
+  constructor(
+    private scene: Scene,
+    private camera: PerspectiveCamera,
+    private occluder: MeshBasicMaterial,
+  ) {
+    super();
+    this.needsSwap = false;
+  }
+
+  override render(renderer: WebGLRenderer, _write: WebGLRenderTarget, read: WebGLRenderTarget): void {
+    const mask = this.camera.layers.mask;
+    const autoClear = renderer.autoClear;
+    const shadows = renderer.shadowMap.autoUpdate;
+    const clear = renderer.getClearColor(new Color());
+    const alpha = renderer.getClearAlpha();
+    renderer.shadowMap.autoUpdate = false;
+    renderer.setRenderTarget(read);
+    renderer.setClearColor(0x000000, 0);
+    renderer.clear();
+    renderer.autoClear = false;
+    this.camera.layers.set(OCCLUDER_LAYER);
+    this.scene.overrideMaterial = this.occluder;
+    renderer.render(this.scene, this.camera);
+    this.scene.overrideMaterial = null;
+    this.camera.layers.set(GLOW_LAYER);
+    renderer.render(this.scene, this.camera);
+    this.camera.layers.mask = mask;
+    renderer.autoClear = autoClear;
+    renderer.shadowMap.autoUpdate = shadows;
+    renderer.setClearColor(clear, alpha);
   }
 }

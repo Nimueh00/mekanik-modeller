@@ -230,3 +230,126 @@ body {
     padding: 3px 8px;
   }
 }
+
+/* ---------- Çevrim göstergesi (Faz 4) ---------- */
+.cyc-cyl-grid .pnl-btn {
+  padding: 7px 2px;
+  font-size: 12px;
+}
+.cyc-strokes {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 4px;
+  margin: 10px 0 8px;
+}
+.cyc-stroke {
+  --stroke: #888;
+  text-align: center;
+  font-size: 11px;
+  letter-spacing: 0.02em;
+  padding: 6px 2px;
+  border-radius: 6px;
+  color: #9b958a;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-bottom: 2px solid color-mix(in srgb, var(--stroke) 45%, transparent);
+  transition: background 0.15s, color 0.15s, border-color 0.15s;
+}
+.cyc-stroke.is-active {
+  color: #fff6e4;
+  background: color-mix(in srgb, var(--stroke) 30%, transparent);
+  border-color: color-mix(in srgb, var(--stroke) 80%, transparent);
+  box-shadow: 0 0 14px color-mix(in srgb, var(--stroke) 35%, transparent);
+}
+.cyc-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.cyc-wheel {
+  flex: none;
+}
+.cyc-arc {
+  fill: none;
+  stroke-width: 7;
+  opacity: 0.85;
+}
+.cyc-ev {
+  fill: none;
+  stroke-width: 2;
+  stroke-linecap: round;
+}
+.cyc-ev-in {
+  stroke: rgba(91, 156, 240, 0.75);
+}
+.cyc-ev-ex {
+  stroke: rgba(196, 160, 120, 0.75);
+}
+.cyc-tdc {
+  stroke: rgba(255, 255, 255, 0.55);
+  stroke-width: 1.2;
+}
+.cyc-wlabel {
+  fill: #8f897e;
+  font-size: 8px;
+  text-anchor: middle;
+}
+.cyc-spark {
+  font-size: 10px;
+  text-anchor: middle;
+}
+.cyc-marker {
+  --stroke: #888;
+  cursor: pointer;
+}
+.cyc-marker circle {
+  fill: #1a1510;
+  stroke: var(--stroke);
+  stroke-width: 1.6;
+}
+.cyc-marker text {
+  fill: #e9e4da;
+  font-size: 9px;
+  font-weight: 600;
+  text-anchor: middle;
+  pointer-events: none;
+}
+.cyc-marker.is-focus circle {
+  fill: var(--stroke);
+  stroke: #fff6e4;
+  stroke-width: 2;
+}
+.cyc-marker.is-focus text {
+  fill: #120e09;
+}
+.cyc-side {
+  min-width: 0;
+}
+.cyc-big-label {
+  font-size: 10px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: #8f897e;
+}
+.cyc-big {
+  font-family: var(--pnl-serif);
+  font-size: 30px;
+  color: #f1e6cf;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.15;
+}
+.cyc-stroke-name {
+  font-size: 13px;
+  font-weight: 600;
+  margin-top: 2px;
+}
+.cyc-pv {
+  margin: 12px 0 8px;
+  border-radius: 8px;
+  background: rgba(0, 0, 0, 0.22);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  overflow: hidden;
+}
+.cyc-pv canvas {
+  display: block;
+  width: 100%;
+}

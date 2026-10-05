@@ -22,22 +22,6 @@ const MC = SPECS.mainCap;
 const OP = SPECS.oilPan;
 const DEG = Math.PI / 180;
 
-/** A static part that can be shown whole or cut open along z = 0 (cutaway). */
-export interface Sectioned {
-  full: BufferGeometry;
-  cut: BufferGeometry;
-}
-
-/** Removes the +Z half (the side facing the default camera). */
-export function sectionCut(g: BufferGeometry, creaseDeg = 35): BufferGeometry {
-  const big = 2000;
-  const box = new BoxGeometry(big, big, big);
-  box.translate(0, 0, big / 2);
-  return subtract(g, [box], creaseDeg);
-}
-
-const sectioned = (full: BufferGeometry): Sectioned => ({ full, cut: sectionCut(full) });
-
 export const LINER_INNER_R = SPECS.bore / 2;
 export const LINER_OUTER_R = SPECS.bore / 2 + B.linerThickness;
 const MAIN_BORE_R = SPECS.crank.mainJournalDiameter / 2 + B.mainBoreClearance;
@@ -62,9 +46,9 @@ function blockOutline(): { pts: P2[]; radii: number[] } {
 }
 
 export interface BlockGeometry {
-  block: Sectioned;
-  liner: Sectioned;
-  upperShells: Sectioned;
+  block: BufferGeometry;
+  liner: BufferGeometry;
+  upperShells: BufferGeometry;
 }
 
 export function buildBlock(): BlockGeometry {
@@ -188,9 +172,9 @@ export function buildBlock(): BlockGeometry {
   for (const mx of MAIN_X) shells.push(halfShell(mx, true));
 
   return {
-    block: sectioned(block),
-    liner: sectioned(lin),
-    upperShells: sectioned(merge(shells)),
+    block,
+    liner: lin,
+    upperShells: merge(shells),
   };
 }
 
@@ -245,8 +229,8 @@ function halfShell(x: number, upper: boolean): BufferGeometry {
 // ---------------------------------------------------------------- main caps
 
 export interface MainCapGeometry {
-  cap: Sectioned;
-  hardware: Sectioned;
+  cap: BufferGeometry;
+  hardware: BufferGeometry;
 }
 
 /** One main bearing cap at x = 0 (the caller positions each of the five). */
@@ -282,12 +266,12 @@ export function buildMainCap(): MainCapGeometry {
     washer.translate(0, -27 - 0.6, z);
     hw2.push(head, washer);
   }
-  return { cap: sectioned(cap), hardware: sectioned(merge(hw2)) };
+  return { cap, hardware: merge(hw2) };
 }
 
 // ---------------------------------------------------------------- oil pan
 
-export function buildOilPan(): Sectioned {
+export function buildOilPan(): BufferGeometry {
   const L = B.halfLength - 4;
   const W = B.skirtHalfWidth + 2;
   const top = OP.railY;
@@ -326,5 +310,5 @@ export function buildOilPan(): Sectioned {
   plug.rotateZ(Math.PI / 2);
   plug.translate(plugX + 9.5, OP.sumpBottom + 22, 0);
 
-  return sectioned(union(solid, [flange, boss, plug], 35));
+  return union(solid, [flange, boss, plug], 35);
 }
