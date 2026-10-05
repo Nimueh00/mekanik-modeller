@@ -87,11 +87,11 @@ export function buildOpenUi(
   const labelGrid = layers.buttons<'labels'>([{ id: 'labels', label: 'Etiketler: açık', span: 1 }], {
     columns: 1,
     selected: 'labels',
-    onSelect: () => {
-      labels.setEnabled(!labels.enabled);
-      labelGrid.setLabel('labels', labels.enabled ? 'Etiketler: açık' : 'Etiketler: kapalı');
-      labelGrid.setSelected(labels.enabled ? 'labels' : null);
-    },
+    onSelect: () => labels.setEnabled(!labels.enabled),
+  });
+  labels.onToggle((on) => {
+    labelGrid.setLabel('labels', on ? 'Etiketler: açık' : 'Etiketler: kapalı');
+    labelGrid.setSelected(on ? 'labels' : null);
   });
 
   // ---------- Parça bilgisi ----------

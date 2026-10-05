@@ -58,6 +58,8 @@ export class LabelSystem {
   area = { left: 0, top: 0, right: window.innerWidth, bottom: window.innerHeight };
   onPick: (partId: string) => void = () => {};
   filter: LabelFilter | null = null;
+  /** Screen rectangles (CSS px) labels must not cover, e.g. a floating card. */
+  blockers: { x: number; y: number; w: number; h: number }[] = [];
   /**
    * Optional line-of-sight test (true = the anchor is visible). Results are
    * cached and refreshed round-robin, `occlusionBudget` labels per frame.
@@ -130,6 +132,13 @@ export class LabelSystem {
   setEnabled(on: boolean): void {
     this.enabled = on;
     this.layer.classList.toggle('is-off', !on);
+    for (const l of this.toggleListeners) l(on);
+  }
+
+  private toggleListeners: ((on: boolean) => void)[] = [];
+
+  onToggle(l: (on: boolean) => void): void {
+    this.toggleListeners.push(l);
   }
 
   setHighlighted(partId: string | null): void {
@@ -140,7 +149,8 @@ export class LabelSystem {
     if (!this.enabled) return;
     const W = this.layer.clientWidth;
     const H = this.layer.clientHeight;
-    const placed: { x: number; y: number; w: number; h: number }[] = [];
+    const placed: { x: number; y: number; w: number; h: number }[] = [...this.blockers];
+    const budget = this.maxVisible + this.blockers.length;
     const A = this.area;
     const midX = (A.left + A.right) / 2;
 
@@ -156,7 +166,7 @@ export class LabelSystem {
       const node = this.registry.get(e.def.partId);
       this.anchor.copy(e.rest).add(node.root.position);
       let ok =
-        placed.length < this.maxVisible &&
+        placed.length < budget &&
         node.root.visible &&
         (this.filter ? this.filter(e.def, this.anchor) : explodeAmount >= TIER_THRESHOLD[e.def.tier] - 1e-6);
       if (!ok) e.seen = null;
@@ -171,6 +181,8 @@ export class LabelSystem {
         sx = (this.v.x * 0.5 + 0.5) * W;
         sy = (-this.v.y * 0.5 + 0.5) * H;
         ok = this.v.z < 1 && sx > A.left + 10 && sx < A.right - 10 && sy > A.top + 10 && sy < A.bottom - 10;
+        // an anchor hidden under a blocker would leave a line pointing at nothing
+        if (ok && this.blockers.some((b) => sx > b.x && sx < b.x + b.w && sy > b.y && sy < b.y + b.h)) ok = false;
       }
       let slotPos: { x: number; y: number } | null = null;
       if (ok) {

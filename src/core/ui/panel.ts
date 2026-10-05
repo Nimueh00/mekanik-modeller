@@ -202,6 +202,7 @@ export class Panel {
   private body: HTMLElement;
   private reopen: HTMLButtonElement;
   private listeners: ((open: boolean) => void)[] = [];
+  private sections = new Map<string, PanelSection>();
   open = true;
 
   constructor(parent: HTMLElement, opts: { title: string; hideLabel: string; showLabel: string }) {
@@ -227,7 +228,13 @@ export class Panel {
   section(title: string): PanelSection {
     const s = new PanelSection(title);
     this.body.append(s.el);
+    this.sections.set(title, s);
     return s;
+  }
+
+  /** A section by its title (e.g. to scroll to it or mask it). */
+  find(title: string): PanelSection | undefined {
+    return this.sections.get(title);
   }
 
   footer(text: string): HTMLElement {

@@ -8,15 +8,22 @@ import { Disassembly } from './core/disassembly';
 import { LabelSystem } from './core/labels';
 import { OcclusionProbe } from './core/occlusion';
 import { SectionView } from './core/section';
+import { type StateMap, UrlState } from './core/urlState';
 import { Selection } from './core/selection';
+import { CoachCard } from './core/ui/coach';
 import { Panel } from './core/ui/panel';
+import { Circuits } from './engine/circuits';
+import type { LearnContext } from './engine/learn';
+import { Quiz } from './engine/quiz';
+import { Tour } from './engine/tour';
 import { Combustion } from './engine/combustion';
-import { Cutaway, CycleFocus } from './engine/cutaway';
+import { CUT_RANGE, Cutaway, CycleFocus } from './engine/cutaway';
 import { CAP_STYLES, capStyleOf, Engine, type BlockView } from './engine/engine';
 import { GasFlow } from './engine/gasFlow';
 import { buildOpenUi } from './engine/openUi';
 import { CAMERA_PRESETS, type EngineLabel, LABELS } from './engine/presentation';
 import { SPECS } from './engine/specs';
+import { EngineSound } from './engine/sound';
 import { buildEngineUi } from './engine/ui';
 import './style.css';
 
@@ -52,6 +59,18 @@ setTimeout(() => {
   disassembly.rebuild();
   const rig = new CameraRig(stage.camera, stage.controls, registry);
   rig.jump(CAMERA_PRESETS[0]!);
+  // Half-extents of the scene around the orbit target; the assembled values (Sergi view) are the reference framing.
+  const fitBox = new Box3();
+  const reach = (out: Vector3) => {
+    fitBox.setFromObject(registry.root);
+    const t = stage.controls.target;
+    return out.set(
+      Math.max(fitBox.max.x - t.x, t.x - fitBox.min.x),
+      Math.max(fitBox.max.y - t.y, t.y - fitBox.min.y),
+      Math.max(fitBox.max.z - t.z, t.z - fitBox.min.z),
+    );
+  };
+  const rest = reach(new Vector3());
   const labels = new LabelSystem(app, registry);
   labels.build(LABELS);
   void document.fonts?.ready.then(() => labels.remeasure());
@@ -71,7 +90,7 @@ setTimeout(() => {
   stage.scene.add(gas.points, combustion.root);
   stage.setGlowOccluderClipping([fxPlane]);
   // Only what surrounds the combustion chambers can hide a flame.
-  const occluding = new Set(['block', 'cylinder-head', 'rods-pistons', 'valvetrain', 'valve-cover', 'plugs-injectors']);
+  const occluding = new Set(['block', 'cylinder-head', 'rods-pistons', 'valvetrain', 'valve-cover', 'plugs-injectors', 'intake-manifold', 'exhaust-manifold']);
   for (const part of registry.all()) {
     if (!occluding.has(part.def.group)) continue;
     part.motion.traverse((o) => {
@@ -112,8 +131,11 @@ setTimeout(() => {
   engine.setView(engine.view);
 
   const panel = new Panel(document.body, { title: 'KONTROL', hideLabel: 'Gizle', showLabel: 'KONTROL' });
+  const learnSec = panel.section('Öğrenme');
   buildOpenUi(panel, { disassembly, rig, registry, labels, selection });
-  const updateUi = buildEngineUi(panel, clock, engine, {
+  const sound = new EngineSound(clock);
+  const ui = buildEngineUi(panel, clock, engine, {
+    sound,
     focus,
     cutaway,
     beforeMaterialSwap: () => selection.releaseMaterials(),
@@ -122,32 +144,148 @@ setTimeout(() => {
     },
   });
   cutaway.onChange(() => selection.releaseMaterials());
+
+  // ---- Phase 5: guided tour, quiz, lubrication/cooling circuits ----
+  const circuits = new Circuits();
+  stage.scene.add(circuits.root);
+  const coach = new CoachCard(document.body);
+  const learn: LearnContext = {
+    coach,
+    panel,
+    clock,
+    engine,
+    ui,
+    disassembly,
+    rig,
+    presets: CAMERA_PRESETS,
+    focus,
+    cutaway,
+    labels,
+    selection,
+    registry,
+    circuits,
+  };
+  const tour = new Tour(learn);
+  const quiz = new Quiz(learn);
+  const learnGrid = learnSec.buttons<'tour' | 'quiz' | 'circuits'>(
+    [
+      { id: 'tour', label: 'Turu başlat', title: '6 adımlı rehberli tur: kamera ve demontaj adım adım ilerler' },
+      { id: 'quiz', label: 'Mini sınav', title: '10 soru: parçayı bul, zamanı söyle, temel bilgi' },
+      { id: 'circuits', label: 'Yağ ve su devreleri', span: 2, title: 'Yağlama ve soğutma devrelerini şematik göster' },
+    ],
+    {
+      columns: 2,
+      onSelect: (id) => {
+        // on phones the panel (a bottom sheet) would cover the model: tuck it away during a tour or quiz
+        if ((id === 'tour' || id === 'quiz') && window.innerWidth < 760) panel.setOpen(false);
+        if (id === 'tour') {
+          quiz.stop();
+          tour.start();
+        } else if (id === 'quiz') {
+          tour.stop();
+          quiz.start();
+        } else {
+          circuits.setVisible(!circuits.shown);
+          if (circuits.shown && engine.view === 'solid') ui.setView('ghost');
+        }
+        syncLearn();
+      },
+    },
+  );
+  const syncLearn = () => {
+    learnGrid.setSelected(tour.active ? 'tour' : quiz.active ? 'quiz' : null);
+    learnGrid.el.querySelector<HTMLElement>('button:last-child')?.classList.toggle('is-active', circuits.shown);
+  };
+  tour.onEnd = syncLearn;
+  quiz.onEnd = syncLearn;
+  // ---- shareable state in the URL (#a=…&cam=…&p=…) ----
+  const r1 = (v: number) => String(Math.round(v));
+  const url = new UrlState(
+    () => {
+      const st: StateMap = {};
+      const a = disassembly.amount;
+      if (a > 0.0005) st.a = a.toFixed(3);
+      const c = stage.camera.position;
+      const t = stage.controls.target;
+      st.cam = [c.x, c.y, c.z, t.x, t.y, t.z].map(r1).join(',');
+      if (selection.selected) st.p = selection.selected.def.id;
+      if (engine.view !== 'solid') st.v = engine.view;
+      if (focus.cylinder !== 0) st.c = String(focus.cylinder + 1);
+      if (cutaway.mode !== 'transverse') st.k = 'boyuna';
+      const off = cutaway.offset[cutaway.mode];
+      if (off !== CUT_RANGE[cutaway.mode].initial) st.x = off.toFixed(1);
+      if (clock.paused) st.t = clock.crankAngle.toFixed(1);
+      if (clock.rpm !== SPECS.speed.defaultRpm) st.rpm = String(clock.rpm);
+      return st;
+    },
+    (st) => {
+      const num = (k: string) => (st[k] !== undefined && Number.isFinite(Number(st[k])) ? Number(st[k]) : null);
+      const c = num('c');
+      if (c !== null && c >= 1 && c <= SPECS.cylinders) focus.set(Math.round(c) - 1);
+      cutaway.setMode(st.k === 'boyuna' ? 'longitudinal' : 'transverse');
+      const x = num('x');
+      if (x !== null) {
+        const r = CUT_RANGE[cutaway.mode];
+        cutaway.setOffset(Math.min(r.max, Math.max(r.min, x)));
+      }
+      ui.syncCut();
+      ui.setView(st.v === 'section' || st.v === 'ghost' ? st.v : 'solid');
+      const a = num('a');
+      disassembly.stopAnimation();
+      disassembly.setAmount(a !== null ? a : 0);
+      const rpm = num('rpm');
+      if (rpm !== null) ui.setRpm(rpm);
+      const t = num('t');
+      if (t !== null) {
+        ui.setSpeed('pause');
+        clock.crankAngle = ((t % 720) + 720) % 720;
+      }
+      const cam = (st.cam ?? '').split(',').map(Number);
+      if (cam.length === 6 && cam.every(Number.isFinite)) {
+        rig.jump({ id: 'url', label: '', position: [cam[0]!, cam[1]!, cam[2]!], target: [cam[3]!, cam[4]!, cam[5]!] });
+      }
+      const p = st.p && registry.all().some((n) => n.def.id === st.p) ? st.p : null;
+      selection.select(p);
+    },
+  );
+  url.load();
+  url.start();
+  const shareSec = panel.find('Bakış açısı')!;
+  const shareGrid = shareSec.buttons<'link'>([{ id: 'link', label: '🔗 Bu görünümün bağlantısını kopyala', title: 'Açıklık, kamera, seçili parça, kesit ve zaman bağlantıya yazılır' }], {
+    columns: 1,
+    onSelect: () => {
+      const link = url.link();
+      const done = (ok: boolean) => {
+        shareGrid.setLabel('link', ok ? '✓ Bağlantı kopyalandı' : 'Adres çubuğundaki bağlantıyı paylaşın');
+        setTimeout(() => shareGrid.setLabel('link', '🔗 Bu görünümün bağlantısını kopyala'), 1800);
+      };
+      navigator.clipboard?.writeText(link).then(() => done(true), () => done(false)) ?? done(false);
+    },
+  });
+
+  learnSec.note('Tur motoru altı adımda anlatır (genel bakış → krank-biyel → 4 zaman → supaplar ve zamanlama → yağlama/soğutma → demontaj). Sınav on soru sorar ve skoru tutar.');
+  // Free area for the model: right of the panel (desktop) or above the bottom sheet / the guide card (phones).
+  let bottomInset = -1;
   const syncInset = () => {
-    stage.setInsets(panel.occupiedWidth, panel.occupiedHeight);
-    labels.maxVisible = window.innerWidth < 760 ? 4 : 99;
+    const narrow = window.innerWidth < 760;
+    coach.el.classList.toggle('is-top', panel.open && narrow);
+    const card = narrow && coach.visible && !panel.open ? coach.el.getBoundingClientRect().height + 20 : 0;
+    const bottom = Math.max(panel.occupiedHeight, card);
+    bottomInset = bottom;
+    stage.setInsets(panel.occupiedWidth, bottom);
+    labels.maxVisible = narrow ? 4 : 99;
     labels.area = {
       left: 0,
-      top: window.innerWidth < 760 ? 56 : 84,
+      top: narrow ? 56 : 84,
       right: window.innerWidth - panel.occupiedWidth,
-      bottom: window.innerHeight - panel.occupiedHeight,
+      bottom: window.innerHeight - bottom,
     };
   };
   panel.onToggle(syncInset);
   window.addEventListener('resize', syncInset);
   syncInset();
 
-  const fitBox = new Box3();
-  // Half-extents of the scene around the orbit target; the assembled values are the reference framing.
-  const reach = (out: Vector3) => {
-    fitBox.setFromObject(registry.root);
-    const t = stage.controls.target;
-    return out.set(
-      Math.max(fitBox.max.x - t.x, t.x - fitBox.min.x),
-      Math.max(fitBox.max.y - t.y, t.y - fitBox.min.y),
-      Math.max(fitBox.max.z - t.z, t.z - fitBox.min.z),
-    );
-  };
-  const rest = reach(new Vector3());
+
   const spread = new Vector3();
   let fit = 1;
   let fitTarget = 1;
@@ -209,7 +347,18 @@ setTimeout(() => {
     // transverse cut only for the focused cylinder (the others are cut away or hidden)
     const seen = engine.view === 'solid' ? 0 : section.isEnabled && cutaway.mode === 'transverse' ? combustion.glowOf(focus.cylinder) : combustion.glow;
     stage.setBloom(fxOn && seen > 0.02, 0.85);
-    updateUi(stage.fps);
+    ui.update(stage.fps);
+    sound.update();
+    if (window.innerWidth < 760 && !panel.open) {
+      const want = coach.visible ? Math.round(coach.el.getBoundingClientRect().height + 20) : 0;
+      if (Math.abs(want - bottomInset) > 2) syncInset(); // the card changed size (next step / question)
+    }
+    if (coach.visible) {
+      const r = coach.el.getBoundingClientRect();
+      labels.blockers = [{ x: r.left - 8, y: r.top - 8, w: r.width + 16, h: r.height + 16 }];
+    } else labels.blockers = [];
+    circuits.update(dt, elapsed);
+    if (circuits.shown && a > 0.3) circuits.setVisible(false); // drawn for the assembled engine only
   });
   stage.onLateFrame(() => {
     section.update();
@@ -218,5 +367,5 @@ setTimeout(() => {
   stage.start();
   loading.classList.add('is-done');
 
-  if (import.meta.env.DEV) Object.assign(window, { __app: { stage, clock, engine, registry, disassembly, rig, selection, labels, section, cutaway, focus, gas, combustion } });
+  if (import.meta.env.DEV) Object.assign(window, { __app: { stage, clock, engine, registry, disassembly, rig, selection, labels, section, cutaway, focus, gas, combustion, ui, sound, tour, quiz, circuits, url, coach } });
 }, 50);

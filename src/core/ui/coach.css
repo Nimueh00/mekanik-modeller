@@ -1,0 +1,200 @@
+.coach {
+  position: fixed;
+  left: 28px;
+  bottom: 28px;
+  width: 400px;
+  max-width: calc(100vw - var(--pnl-width, 340px) - 64px);
+  max-height: calc(100vh - 140px);
+  display: flex;
+  flex-direction: column;
+  box-sizing: border-box;
+  padding: 18px 20px 14px;
+  background: rgba(14, 11, 8, 0.88);
+  backdrop-filter: blur(14px) saturate(1.1);
+  -webkit-backdrop-filter: blur(14px) saturate(1.1);
+  border: 1px solid rgba(201, 169, 106, 0.32);
+  border-radius: 12px;
+  box-shadow: 0 18px 50px rgba(0, 0, 0, 0.55);
+  color: var(--pnl-text, #e9e4da);
+  font-family: var(--pnl-sans, system-ui, sans-serif);
+  font-size: 13.5px;
+  line-height: 1.5;
+  z-index: 9;
+  opacity: 0;
+  transform: translateY(12px);
+  pointer-events: none;
+  transition: opacity 0.3s, transform 0.3s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+.coach-main {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+}
+.coach.is-open {
+  opacity: 1;
+  transform: none;
+  pointer-events: auto;
+}
+.coach-kicker {
+  font-size: 11px;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--pnl-gold, #c9a96a);
+  margin-bottom: 4px;
+}
+.coach-title {
+  margin: 0 0 8px;
+  font-family: var(--pnl-serif, serif);
+  font-weight: 500;
+  font-size: 22px;
+  letter-spacing: 0.02em;
+  color: #f1e6cf;
+}
+.coach-text {
+  margin: 0 0 8px;
+  color: #d6d0c4;
+}
+.coach-choices {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 7px;
+  margin: 10px 0 6px;
+}
+.coach-choice {
+  appearance: none;
+  font: inherit;
+  font-size: 13px;
+  text-align: left;
+  color: var(--pnl-text, #e9e4da);
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.13);
+  border-radius: 8px;
+  padding: 9px 10px;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s;
+}
+.coach-choice:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.08);
+  border-color: rgba(214, 182, 118, 0.6);
+}
+.coach-choice:disabled {
+  cursor: default;
+}
+.coach-choice.is-correct {
+  border-color: #6fbf73;
+  background: rgba(111, 191, 115, 0.18);
+}
+.coach-choice.is-wrong {
+  border-color: #d9654f;
+  background: rgba(217, 101, 79, 0.18);
+}
+.coach-choice.is-dim {
+  opacity: 0.45;
+}
+.coach-feedback {
+  margin: 8px 0 4px;
+  padding: 8px 10px;
+  border-radius: 8px;
+  font-size: 13px;
+}
+.coach-feedback.is-good {
+  background: rgba(111, 191, 115, 0.14);
+  color: #bfe6c0;
+}
+.coach-feedback.is-bad {
+  background: rgba(217, 101, 79, 0.14);
+  color: #f2c1b6;
+}
+.coach-feedback.is-info {
+  background: rgba(201, 169, 106, 0.12);
+  color: #ead8b0;
+}
+.coach-foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-top: 12px;
+}
+.coach-dots {
+  display: flex;
+  gap: 6px;
+}
+.coach-dot {
+  appearance: none;
+  width: 8px;
+  height: 8px;
+  padding: 0;
+  border-radius: 50%;
+  border: none;
+  background: rgba(255, 255, 255, 0.18);
+  cursor: pointer;
+}
+.coach-dot.is-done {
+  background: rgba(201, 169, 106, 0.5);
+}
+.coach-dot.is-on {
+  background: var(--pnl-gold, #c9a96a);
+  box-shadow: 0 0 0 3px rgba(201, 169, 106, 0.22);
+}
+.coach-actions {
+  display: flex;
+  gap: 8px;
+  margin-left: auto;
+}
+.coach-btn {
+  padding: 8px 14px;
+}
+.coach-btn.is-primary {
+  background: var(--pnl-active-bg);
+  border-color: var(--pnl-active-border);
+  color: #fff6e4;
+}
+.coach-btn.is-quiet {
+  color: var(--pnl-muted, #9b958a);
+}
+.coach-btn:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+/* phones: the panel is a bottom sheet, so the card sits under the title */
+@media (max-width: 760px) {
+  .coach {
+    left: 10px;
+    right: 10px;
+    bottom: 10px;
+    width: auto;
+    max-width: none;
+    max-height: 46vh;
+    padding: 12px 14px 10px;
+    font-size: 12.5px;
+  }
+  /* the bottom sheet is open: move the card under the title */
+  .coach.is-top {
+    top: 58px;
+    bottom: auto;
+    max-height: calc(48vh - 72px);
+  }
+  .coach-title {
+    font-size: 18px;
+  }
+  .coach-choices {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+/* a panel section hidden during a quiz question (it would give the answer away) */
+.pnl-section.is-masked .pnl-section-body {
+  filter: blur(7px);
+  opacity: 0.35;
+  pointer-events: none;
+  user-select: none;
+}
+.pnl-section.is-masked .pnl-section-title::after {
+  content: 'sınav sırasında gizli';
+  margin-left: 10px;
+  font-size: 10px;
+  letter-spacing: 0.12em;
+  color: var(--pnl-muted, #9b958a);
+}

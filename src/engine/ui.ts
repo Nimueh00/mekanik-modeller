@@ -5,8 +5,8 @@ import { cylinderCrankAngle, pistonDrop } from './kinematics';
 import { DISPLACEMENT_CC, SPECS } from './specs';
 import { CUT_RANGE, type CutMode, type Cutaway, type CycleFocus } from './cutaway';
 import { buildCycleUi } from './cycleUi';
+import type { EngineSound } from './sound';
 
-type SpeedId = 'pause' | 's50' | 's10' | 's4' | 'real';
 const SPEEDS: Record<Exclude<SpeedId, 'pause'>, number> = { s50: 1 / 50, s10: 1 / 10, s4: 1 / 4, real: 1 };
 
 const SVG = 'http://www.w3.org/2000/svg';
@@ -23,6 +23,16 @@ export interface EngineUiHooks {
   beforeMaterialSwap: () => void;
   /** Lets other controls (the "Kesit" camera preset) switch the view mode through the panel. */
   onViewRequest: (l: (v: BlockView) => void) => void;
+  sound: EngineSound;
+}
+
+/** Panel handles other features (URL state, tour, quiz) use to keep the controls in sync. */
+export interface EngineUiApi {
+  update(fps: number): void;
+  setSpeed(id: SpeedId): void;
+  setView(v: BlockView): void;
+  syncCut(): void;
+  setRpm(rpm: number): void;
 }
 
 /**
@@ -30,7 +40,9 @@ export interface EngineUiHooks {
  * cycle indicator and the cut-away view. "İçini aç", "Bakış açısı",
  * "Katmanlar" and "Parça bilgisi" come from openUi.ts above these.
  */
-export function buildEngineUi(panel: Panel, clock: MachineClock, engine: Engine, o: EngineUiHooks): (fps: number) => void {
+export type SpeedId = 'pause' | 's50' | 's10' | 's4' | 'real';
+
+export function buildEngineUi(panel: Panel, clock: MachineClock, engine: Engine, o: EngineUiHooks): EngineUiApi {
   // ---------- Zaman ----------
   const time = panel.section('Zaman');
   let lastSpeed: Exclude<SpeedId, 'pause'> = 's10';
@@ -73,6 +85,16 @@ export function buildEngineUi(panel: Panel, clock: MachineClock, engine: Engine,
       onSelect: (id) => stepBy(id === 'fwd' ? 1 : -1),
     },
   );
+  // sound: off by default; the first click also unlocks Web Audio (autoplay policy)
+  const soundGrid = time.buttons<'sound'>([{ id: 'sound', label: '🔈 Sesi aç', title: 'Ateşlemelerle senkron, sentezlenmiş motor sesi' }], {
+    columns: 1,
+    onSelect: () => {
+      void o.sound.setOn(!o.sound.on);
+      soundGrid.setLabel('sound', o.sound.on ? '🔊 Sesi kapat' : '🔈 Sesi aç');
+      soundGrid.setSelected(o.sound.on ? 'sound' : null);
+    },
+  });
+
   const stepBy = (deg: number) => {
     clock.paused = true;
     clock.advance(deg);
@@ -81,7 +103,7 @@ export function buildEngineUi(panel: Panel, clock: MachineClock, engine: Engine,
 
   // ---------- Devir ----------
   const rpmSec = panel.section('Devir');
-  rpmSec.slider({
+  const rpmSlider = rpmSec.slider({
     min: SPECS.speed.idleRpm,
     max: SPECS.speed.redlineRpm,
     step: 50,
@@ -176,7 +198,7 @@ export function buildEngineUi(panel: Panel, clock: MachineClock, engine: Engine,
 
   const specLine = `${SPECS.cylinders} silindir · ${SPECS.bore} × ${SPECS.stroke} mm · ${Math.round(DISPLACEMENT_CC)} cm³ · l = ${SPECS.rodLength} mm`;
 
-  return (fps: number) => {
+  const update = (fps: number) => {
     const a = clock.crankAngle;
     angle.set(`${a.toFixed(1)}°`);
     mech.set(`${(a % 360).toFixed(1)}°`);
@@ -186,6 +208,27 @@ export function buildEngineUi(panel: Panel, clock: MachineClock, engine: Engine,
     effective.set(clock.paused ? 'durduruldu' : `${visRpm.toLocaleString('tr-TR', { maximumFractionDigits: 1 })} dev/dk`);
     gauge.update(a);
     footer.textContent = `${specLine} · ${Math.round(fps)} fps`;
+  };
+  return {
+    update,
+    setSpeed(id) {
+      if (id === 'pause') clock.paused = true;
+      else {
+        lastSpeed = id;
+        clock.timeScale = SPEEDS[id];
+        clock.paused = false;
+      }
+      syncSpeed();
+    },
+    setView,
+    syncCut() {
+      cutGrid.setSelected(o.cutaway.mode);
+      syncSlider();
+    },
+    setRpm(rpm) {
+      clock.rpm = Math.min(SPECS.speed.redlineRpm, Math.max(SPECS.speed.idleRpm, Math.round(rpm / 50) * 50));
+      rpmSlider.set(clock.rpm);
+    },
   };
 }
 
