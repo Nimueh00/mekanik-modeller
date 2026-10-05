@@ -91,7 +91,14 @@ export type MaterialKey =
   | 'chrome'
   | 'darkSteel'
   | 'bronze'
-  | 'stampedSteel';
+  | 'stampedSteel'
+  | 'crinkleBlack'
+  | 'blackPlastic'
+  | 'guidePolymer'
+  | 'ceramic'
+  | 'rubber'
+  | 'gasket'
+  | 'chainSteel';
 
 /**
  * Shared material library. Materials are created once and shared; callers that
@@ -176,6 +183,69 @@ export class MaterialLibrary {
           roughness: 0.48,
           clearcoat: 0.6,
           clearcoatRoughness: 0.35,
+          side: DoubleSide,
+        });
+      case 'crinkleBlack':
+        // Wrinkle-finish paint (valve cover): black, matte, coarse bump.
+        return new MeshPhysicalMaterial({
+          color: new Color('#1b1b1d'),
+          metalness: 0.15,
+          roughness: 0.62,
+          roughnessMap: fine(),
+          bumpMap: fine(),
+          bumpScale: 0.9,
+          clearcoat: 0.25,
+          clearcoatRoughness: 0.6,
+          side: DoubleSide,
+        });
+      case 'blackPlastic':
+        // Glass-filled nylon housings (coils, injectors, connectors).
+        return new MeshPhysicalMaterial({
+          color: new Color('#161617'),
+          metalness: 0,
+          roughness: 0.45,
+          clearcoat: 0.2,
+          clearcoatRoughness: 0.4,
+        });
+      case 'guidePolymer':
+        // PA46 chain guide / tensioner shoe facing: warm amber-brown.
+        return new MeshPhysicalMaterial({
+          color: new Color('#6b3f1d'),
+          metalness: 0,
+          roughness: 0.42,
+          sheen: 0.3,
+          sheenColor: new Color('#a06a3a'),
+        });
+      case 'ceramic':
+        // Spark plug insulator: glazed alumina.
+        return new MeshPhysicalMaterial({
+          color: new Color('#ecebe6'),
+          metalness: 0,
+          roughness: 0.18,
+          clearcoat: 1,
+          clearcoatRoughness: 0.08,
+        });
+      case 'rubber':
+        return new MeshPhysicalMaterial({
+          color: new Color('#0f0f10'),
+          metalness: 0,
+          roughness: 0.8,
+        });
+      case 'chainSteel':
+        // Heat-treated chain plates: dark, blued, but with crisp reflections on the flat faces.
+        return new MeshPhysicalMaterial({
+          color: new Color('#2b2e33'),
+          metalness: 1,
+          roughness: 0.24,
+          clearcoat: 0.4,
+          clearcoatRoughness: 0.25,
+        });
+      case 'gasket':
+        // Multi-layer steel head gasket with an elastomer coating.
+        return new MeshPhysicalMaterial({
+          color: new Color('#4a4d48'),
+          metalness: 0.6,
+          roughness: 0.5,
           side: DoubleSide,
         });
     }

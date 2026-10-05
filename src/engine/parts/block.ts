@@ -14,6 +14,7 @@ import {
   shapeFrom,
 } from '../../core/geometry/profile';
 import { CYLINDER_X, MAIN_X, SPECS } from '../specs';
+import { HEAD_BOLTS } from '../headLayout';
 import { CRANK_STATIONS } from './crankshaft';
 
 const B = SPECS.block;
@@ -161,6 +162,13 @@ export function buildBlock(): BlockGeometry {
       }
     }
   }
+  // Threaded head-bolt holes, each in a boss that interrupts the water jacket.
+  const hb = SPECS.head.bolt;
+  for (const b of HEAD_BOLTS) {
+    const h = new CylinderGeometry(hb.diameter / 2 - 0.6, hb.diameter / 2 - 0.6, hb.threadDepth + 2, 24);
+    h.translate(b.x, B.deckHeight - hb.threadDepth / 2 + 1, b.z);
+    bores.push(h);
+  }
   block = subtract(block, [merge(bays), seat, bore, seal, merge(bores), jacket], 35);
 
   // Cylinder liner (one, instanced at each bore by the caller).
@@ -201,8 +209,17 @@ function waterJacket(): BufferGeometry {
     c.translate(cx, (wj.top + wj.bottom) / 2, 0);
     return c;
   });
-  return subtract(outer, cores);
+  // Head-bolt bosses stay solid through the jacket.
+  for (const b of HEAD_BOLTS) {
+    const c = new CylinderGeometry(HEAD_BOLT_BOSS_R, HEAD_BOLT_BOSS_R, wj.top - wj.bottom + 20, 32);
+    c.translate(b.x, (wj.top + wj.bottom) / 2, b.z);
+    cores.push(c);
+  }
+  return subtract(outer, [merge(cores)]);
 }
+
+/** Radius of the solid boss around each head-bolt hole inside the water jacket. */
+export const HEAD_BOLT_BOSS_R = 9;
 
 /** Half of a main bearing shell at axial station `x`. */
 function halfShell(x: number, upper: boolean): BufferGeometry {

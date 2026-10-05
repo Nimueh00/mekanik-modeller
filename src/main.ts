@@ -1,4 +1,3 @@
-import { Vector3 } from 'three';
 import { MachineClock } from './core/clock';
 import { MaterialLibrary } from './core/materials';
 import { PartRegistry } from './core/registry';
@@ -6,14 +5,14 @@ import { Stage } from './core/stage';
 import { Panel } from './core/ui/panel';
 import { Engine } from './engine/engine';
 import { SPECS } from './engine/specs';
-import { buildEngineUi } from './engine/ui';
+import { buildEngineUi, VIEWS } from './engine/ui';
 import './style.css';
 
 const app = document.getElementById('app')!;
 
 const title = document.createElement('div');
 title.className = 'title-block';
-title.innerHTML = '<h1>Dört Zamanlı Benzinli Motor</h1><p>1.6 L · Sıralı 4 silindir · Krank-biyel mekanizması</p>';
+title.innerHTML = '<h1>Dört Zamanlı Benzinli Motor</h1><p>1.6 L · Sıralı 4 silindir · DOHC 16 supap</p>';
 const loading = document.createElement('div');
 loading.className = 'loading';
 loading.textContent = 'MOTOR HAZIRLANIYOR';
@@ -21,9 +20,9 @@ app.append(title, loading);
 
 const stage = new Stage({
   container: app,
-  subjectRadius: 320,
-  target: new Vector3(10, 30, 0),
-  cameraPosition: new Vector3(430, 300, 820),
+  subjectRadius: 380,
+  target: VIEWS.exhibit.target,
+  cameraPosition: VIEWS.exhibit.position,
   floorY: -168,
   framingAspect: 1.15,
 });
@@ -38,7 +37,7 @@ setTimeout(() => {
   stage.scene.add(registry.root);
 
   const panel = new Panel(document.body, { title: 'KONTROL', hideLabel: 'Gizle', showLabel: 'KONTROL' });
-  const updateUi = buildEngineUi(panel, clock, engine);
+  const updateUi = buildEngineUi(panel, clock, engine, stage);
   const syncInset = () => stage.setInsets(panel.occupiedWidth, panel.occupiedHeight);
   panel.onToggle(syncInset);
   window.addEventListener('resize', syncInset);

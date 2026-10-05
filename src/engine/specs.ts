@@ -116,12 +116,92 @@ export const SPECS = {
     },
   },
 
-  /** Only what phase 1 needs to stay consistent with the valve pockets; phase 2 owns the rest. */
   valveTrain: {
     intakeValveDiameter: 30,
     exhaustValveDiameter: 26,
     maxLift: 9,
     includedAngleDeg: 42, // pent-roof: angle between intake and exhaust valve axes
+    /**
+     * Valve events (VISION §3), in crank degrees, measured at the valve
+     * seat (lift leaves / returns to exactly 0).
+     */
+    timing: { ivoBtdc: 10, ivcAbdc: 50, evoBbdc: 50, evcAtdc: 10 },
+    /** Valve, stations along the valve axis measured from the valve face (s = 0, valve closed). */
+    valve: {
+      length: 97, // face to stem tip
+      intakeStem: 5.5,
+      exhaustStem: 6,
+      margin: 1, // cylindrical edge of the head below the 45° seat
+      seatWidth: 1.6, // axial height of the 45° seat face
+      tulipEnd: 15, // where the head's tulip blends into the stem
+      keeperGroove: [91, 93.5] as const,
+    },
+    spring: {
+      seat: 54, // spring seat (head) station
+      installedLength: 36, // seat → retainer underside
+      meanDiameter: 23,
+      wire: 3.2,
+      totalCoils: 6,
+      deadCoils: 1, // closed, ground coil at each end
+    },
+    retainer: { bottom: 88.5, top: 96, outerDiameter: 25.4 },
+    guide: { from: 22, to: 63, outerDiameter: 10.5 },
+    bucket: { diameter: 32.5, height: 24, topThickness: 3.5, wall: 1.5 },
+    /** Valve clearance between the cam base circle and the bucket (shim-on-bucket, mechanical). */
+    lash: 0.25,
+  },
+
+  /**
+   * Camshafts (DOHC). The lobe profile itself lives in `camProfile.ts`; these
+   * are its parameters. Cam angles are in cam degrees.
+   */
+  cam: {
+    baseCircleRadius: 20,
+    /** Half of the valve-open period in cam degrees: 240° crank / 2 / 2. */
+    halfOpenDeg: 60,
+    /** Length of the clearance (lash) ramp on each side, cam degrees. */
+    rampDeg: 20,
+    /** Seating velocity at the end of the ramp, as a fraction of maxLift per half-period. */
+    rampVelocity: 0.1,
+    /** Harmonic profile shape: end of the positive-acceleration pulse / start of the nose. */
+    flankEnd: 0.15,
+    noseStart: 0.15,
+    lobeWidth: 12,
+    journalDiameter: 28,
+    journalWidth: 18,
+    shaftDiameter: 24,
+  },
+
+  head: {
+    gasketThickness: 1, // compressed MLS gasket
+    gasketBoreDiameter: 81.5,
+    /** Chamber outline radius in the head (slightly larger than the bore to unshroud the valves). */
+    chamberRadius: 40.5,
+    /**
+     * The roof stops at |x| = chamberHalfX (measured along the crank axis):
+     * front and rear squish pads, as in real pent-roof heads. Sets the
+     * compression ratio (see tests/headClearance.test.ts).
+     */
+    chamberHalfX: 36.5,
+    /** Distance from the pocket floor (piston at TDC) to the closed valve face, along the valve axis. */
+    pocketToFace: 8.8,
+    halfLength: 198,
+    deckHalfWidth: 64,
+    topHalfWidth: 96,
+    bolt: { z: 36, diameter: 10, headDiameter: 17, headHeight: 10, seatDepth: 30, threadDepth: 58 },
+    camTunnelRadius: 31.5,
+    plug: { threadDiameter: 14, reach: 19, wellDiameter: 24 },
+  },
+
+  timingDrive: {
+    chainPitch: 8,
+    rollerDiameter: 5,
+    rollerWidth: 4,
+    plateDepth: 7.2,
+    plateThickness: 1,
+    crankTeeth: 21,
+    camTeeth: 42,
+    toothWidth: 3.4,
   },
 
   block: {

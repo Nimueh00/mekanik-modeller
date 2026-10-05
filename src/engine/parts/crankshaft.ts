@@ -1,8 +1,6 @@
 import { BoxGeometry, type BufferGeometry, CylinderGeometry } from 'three';
-import { sprocketOutline } from '../../core/geometry/gear';
 import {
   arcPts,
-  circlePts,
   extrudeAlongX,
   latheX,
   merge,
@@ -89,7 +87,6 @@ export interface CrankGeometry {
   machined: BufferGeometry;
   forged: BufferGeometry;
   hardware: BufferGeometry;
-  sprocket: BufferGeometry;
 }
 
 export function buildCrankshaft(): CrankGeometry {
@@ -183,16 +180,9 @@ export function buildCrankshaft(): CrankGeometry {
     ),
   );
 
-  // Timing sprocket (separate part, rotates with the crank).
-  const sp = C.sprocket;
-  const outline = sprocketOutline(sp.teeth, sp.chainPitch, sp.rollerDiameter);
-  const bore = circlePts(0, 0, rk, 48, true);
-  const sprocket = extrudeAlongX(shapeFrom(outline, [bore]), s.sprocketX - sp.width / 2, s.sprocketX + sp.width / 2, 0.5, 8);
-
   return {
     machined: merge(machined),
     forged: merge(forged),
     hardware: merge(hardware),
-    sprocket,
   };
 }
