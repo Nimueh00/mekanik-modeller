@@ -1,4 +1,5 @@
-import type { P2 } from './profile';
+import type { BufferGeometry } from 'three';
+import { extrudeAlongX, merge, type P2, shapeFrom } from './profile';
 
 export interface GearSpec {
   teeth: number;
@@ -91,3 +92,60 @@ export function sprocketOutline(teeth: number, pitch: number, rollerDia: number,
 }
 
 export const sprocketPitchRadius = (teeth: number, pitch: number) => pitch / (2 * Math.sin(Math.PI / teeth));
+
+export interface SprocketOptions {
+  teeth: number;
+  pitch: number;
+  rollerDiameter: number;
+  /** Axial width of the toothed rim (must be narrower than the chain's inner width). */
+  toothWidth: number;
+  /** Centre plane along X. */
+  x: number;
+  boreRadius: number;
+  hub: { radius: number; width: number };
+  /** Optional thinner web between hub and rim, with lightening holes. */
+  web?: { width: number; holes: number; holeRadius: number };
+  /** Rotation of the tooth pattern (radians, in the (z, y) plane). */
+  phase?: number;
+}
+
+/**
+ * Roller-chain sprocket around the X axis: toothed rim (with chamfered tooth
+ * flanks), optional lightened web, and a wider hub. Shapes are drawn in the
+ * (z, y) plane like every other X-extruded part.
+ */
+export function buildSprocket(o: SprocketOptions): BufferGeometry {
+  const extrude = (pts: P2[], holes: P2[][], x0: number, x1: number, bevel: number) => [
+    extrudeAlongX(shapeFrom(pts, holes), x0, x1, bevel, 8),
+  ];
+  const rp = sprocketPitchRadius(o.teeth, o.pitch);
+  const rimInner = o.web ? rp - o.rollerDiameter / 2 - 6 : o.hub.radius - 0.5;
+  const ph = o.phase ?? 0;
+  const c = Math.cos(ph);
+  const s = Math.sin(ph);
+  const outline = sprocketOutline(o.teeth, o.pitch, o.rollerDiameter).map(([z, y]) => [z * c - y * s, z * s + y * c] as P2);
+  const circle = (r: number, n: number, cx = 0, cy = 0) => {
+    const out: P2[] = [];
+    for (let i = 0; i < n; i++) {
+      const a = (-i / n) * Math.PI * 2;
+      out.push([cx + Math.cos(a) * r, cy + Math.sin(a) * r]);
+    }
+    return out;
+  };
+  const parts: BufferGeometry[] = [];
+  const tw = o.toothWidth / 2;
+  parts.push(...extrude(outline, [circle(rimInner, 96)], o.x - tw, o.x + tw, Math.min(0.8, tw * 0.4)));
+  if (o.web) {
+    const holes: P2[][] = [circle(o.hub.radius - 0.5, 64)];
+    const rm = (o.hub.radius + rimInner) / 2;
+    for (let k = 0; k < o.web.holes; k++) {
+      const a = ph + (k / o.web.holes) * Math.PI * 2;
+      holes.push(circle(o.web.holeRadius, 32, Math.cos(a) * rm, Math.sin(a) * rm));
+    }
+    const ww = o.web.width / 2;
+    parts.push(...extrude(circle(rimInner + 0.5, 96).reverse(), holes, o.x - ww, o.x + ww, 0.5));
+  }
+  const hw = o.hub.width / 2;
+  parts.push(...extrude(circle(o.hub.radius, 64).reverse(), [circle(o.boreRadius, 48)], o.x - hw, o.x + hw, 0.6));
+  return merge(parts);
+}

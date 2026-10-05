@@ -77,9 +77,12 @@ export class Stage {
     this.controls.target.copy(opts.target);
     this.controls.enableDamping = true;
     this.controls.dampingFactor = 0.08;
-    this.controls.minDistance = R * 0.6;
+    this.controls.minDistance = R * 0.3;
     this.controls.maxDistance = R * 8;
     this.controls.update();
+    this.controls.addEventListener('start', () => {
+      this.flight = undefined; // the user takes over
+    });
 
     // Image-based lighting: a neutral studio room, dimmed for the dark look.
     const pmrem = new PMREMGenerator(this.renderer);
@@ -178,6 +181,44 @@ export class Stage {
     }
   }
 
+  private flight?: { p0: Vector3; t0: Vector3; p1: Vector3; t1: Vector3; dur: number; t: number };
+
+  /**
+   * Fly the camera to a new position and orbit target (eased). The motion
+   * curves away from the subject a little, so the camera does not cut
+   * through it on long moves.
+   */
+  flyTo(position: Vector3, target: Vector3, seconds = 1.4): void {
+    this.flight = {
+      p0: this.camera.position.clone(),
+      t0: this.controls.target.clone(),
+      p1: position.clone(),
+      t1: target.clone(),
+      dur: Math.max(seconds, 0.01),
+      t: 0,
+    };
+  }
+
+  private stepFlight(dt: number): void {
+    const f = this.flight;
+    if (!f) return;
+    f.t = Math.min(f.dur, f.t + dt);
+    const u = f.t / f.dur;
+    const e = u < 0.5 ? 4 * u * u * u : 1 - Math.pow(-2 * u + 2, 3) / 2; // easeInOutCubic
+    const target = f.t0.clone().lerp(f.t1, e);
+    // interpolate in spherical coordinates around the moving target → an arc, not a chord
+    const a = f.p0.clone().sub(f.t0);
+    const b = f.p1.clone().sub(f.t1);
+    const ra = a.length();
+    const rb = b.length();
+    const dir = a.normalize().lerp(b.normalize(), e);
+    if (dir.lengthSq() < 1e-6) dir.set(0, 1, 0);
+    dir.normalize().multiplyScalar(ra + (rb - ra) * e);
+    this.camera.position.copy(target).add(dir);
+    this.controls.target.copy(target);
+    if (f.t >= f.dur) this.flight = undefined;
+  }
+
   onFrame(cb: FrameCallback): void {
     this.callbacks.push(cb);
   }
@@ -194,6 +235,7 @@ export class Stage {
       this.fps = avg > 0 ? 1 / avg : 0;
       this.adaptResolution(dt);
       for (const cb of this.callbacks) cb(dt, t);
+      this.stepFlight(dt);
       this.controls.update();
       this.renderer.render(this.scene, this.camera);
     };
