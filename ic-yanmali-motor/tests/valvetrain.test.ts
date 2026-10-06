@@ -84,7 +84,7 @@ describe('cam profile (single source: camLift)', () => {
   });
 });
 
-describe('valve timing (VISION §3)', () => {
+describe('valve timing', () => {
   it('fires 1-3-4-2 with cylinder 1 at its firing TDC at crank 0°', () => {
     const order = [0, 1, 2, 3].sort((a, b) => FIRING_TDC[a]! - FIRING_TDC[b]!).map((i) => i + 1);
     expect(order).toEqual([1, 3, 4, 2]);

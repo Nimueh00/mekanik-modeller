@@ -3,7 +3,7 @@ import { LAYERS, PARTS } from '../src/engine/catalog';
 import { SPECS } from '../src/engine/specs';
 
 /*
- * Exploded-view sanity (Phase 5 audit, finding 1): when fully open, a part
+ * Exploded-view sanity: when fully open, a part
  * that comes off earlier must sit further out than the parts under it, or it
  * would pass through them. Assembled heights are from the geometry (mm):
  * head 203–323 (body), cams 290–356, buckets 269–310, valve faces ≈ 205,

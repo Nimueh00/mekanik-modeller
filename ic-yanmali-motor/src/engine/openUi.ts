@@ -13,7 +13,7 @@ const el = <K extends keyof HTMLElementTagNameMap>(tag: K, cls: string, text?: s
   return e;
 };
 
-/** Panel sections for disassembly, camera, layers, labels and part info (VISION §5, top half). */
+/** Panel sections for disassembly, camera, layers, labels and part info (top half of the panel). */
 export function buildOpenUi(
   panel: Panel,
   o: { disassembly: Disassembly; rig: CameraRig; registry: PartRegistry; labels: LabelSystem; selection: Selection },

@@ -26,7 +26,7 @@ import { SPECS } from './specs';
  *   valve lift = max(0, camLift − lash)
  * is exactly zero outside |δ| < β and exactly maxLift at δ = 0. With
  * β = 60 cam° = 120 crank° each event lasts exactly 240 crank°, matching
- * VISION §3 (IVO 10° BTDC → IVC 50° ABDC, EVO 50° BBDC → EVC 10° ATDC).
+ * The valve timing (IVO 10° BTDC → IVC 50° ABDC, EVO 50° BBDC → EVC 10° ATDC).
  */
 
 const C = SPECS.cam;
@@ -40,7 +40,7 @@ const v0 = C.rampVelocity;
 const u1 = C.flankEnd;
 const u2 = C.noseStart;
 const w = 1 - u2;
-// Closed form from v(1) = 0 and y(1) = 1 (see derivation in docs/PROGRESS.md).
+// Closed form from v(1) = 0 and y(1) = 1.
 const V1 = (1 - (v0 * u1) / 2) / (u2 - u1 / 2 + (2 * w) / Math.PI);
 const A1 = ((V1 - v0) * Math.PI) / (2 * u1);
 const A2 = (V1 * Math.PI) / (2 * w);

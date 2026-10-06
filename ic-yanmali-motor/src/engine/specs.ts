@@ -47,7 +47,7 @@ export const SPECS = {
       boltBossDiameter: 14,
       keyWidth: 5,
     },
-    /** Timing-chain drive sprocket (chain itself arrives in phase 2). */
+    /** Timing-chain drive sprocket. */
     sprocket: {
       teeth: 21,
       chainPitch: 8,
@@ -122,7 +122,7 @@ export const SPECS = {
     maxLift: 9,
     includedAngleDeg: 42, // pent-roof: angle between intake and exhaust valve axes
     /**
-     * Valve events (VISION §3), in crank degrees, measured at the valve
+     * Valve events, in crank degrees, measured at the valve
      * seat (lift leaves / returns to exactly 0).
      */
     timing: { ivoBtdc: 10, ivcAbdc: 50, evoBbdc: 50, evcAtdc: 10 },

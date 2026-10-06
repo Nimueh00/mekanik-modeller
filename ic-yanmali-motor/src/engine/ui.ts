@@ -36,7 +36,7 @@ export interface EngineUiApi {
 }
 
 /**
- * Lower half of the control panel (VISION §5): time, speed, crank angle,
+ * Lower half of the control panel: time, speed, crank angle,
  * cycle indicator and the cut-away view. "İçini aç", "Bakış açısı",
  * "Katmanlar" and "Parça bilgisi" come from openUi.ts above these.
  */
@@ -125,7 +125,7 @@ export function buildEngineUi(panel: Panel, clock: MachineClock, engine: Engine,
   const mech = angSec.readout('Krank konumu (0–360°)');
   const cam = angSec.readout('Eksantrik açısı (½ hız)');
 
-  // ---------- Çevrim göstergesi (Faz 4) ----------
+  // ---------- Çevrim göstergesi ----------
   const updateCycle = buildCycleUi(panel, clock, o.focus);
 
   // ---------- Kesit görünümü ----------

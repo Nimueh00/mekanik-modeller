@@ -201,7 +201,7 @@ export class Stage {
   }
 
   /**
-   * Selective bloom (VISION §2: only for combustion and the spark).
+   * Selective bloom (only for combustion and the spark).
    *
    * Objects on GLOW_LAYER are the only bloom sources: a glow pass renders the
    * OCCLUDER_LAYER objects in plain black (so a flame hidden behind metal does

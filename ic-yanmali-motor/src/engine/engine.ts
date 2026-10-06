@@ -200,7 +200,7 @@ export class Engine {
     this.update(0);
   }
 
-  /** Phase 2: cylinder head, valve train, camshafts, timing drive, plugs, injectors, cam cover. */
+  /** Top end: cylinder head, valve train, camshafts, timing drive, plugs, injectors, cam cover. */
   private buildTopEnd(sprocketG: ReturnType<typeof buildSprockets>): void {
     const M = (k: MaterialKey) => this.materials.get(k);
 
@@ -311,7 +311,7 @@ export class Engine {
       mesh(coverG.filler, M('blackPlastic')),
     );
 
-    // ---- manifolds and chain cover (phase 5) ----
+    // ---- manifolds and chain cover ----
     const inG = buildIntakeManifold();
     this.registry.add(PARTS.intakeManifold, this.sectioned(inG.body, M('castAluminum')), mesh(inG.hardware, M('darkSteel')));
     const exG = buildExhaustManifold();

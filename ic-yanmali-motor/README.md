@@ -11,7 +11,7 @@ Tarayıcıda çalışan, mühendislik açısından doğru, **çalışan** bir 4 
 - **Öğrenme turu** (6 adım) ve **mini sınav** (10 soru, skor).
 - **Paylaşılabilir bağlantı:** açıklık oranı, kamera, seçili parça, görünüm ve zaman URL'de tutulur.
 
-Arayüz Türkçedir. Ayrıntılı şartname: [`docs/VISION.md`](docs/VISION.md) · geliştirme günlüğü, kararlar ve denetim: [`docs/PROGRESS.md`](docs/PROGRESS.md).
+Arayüz Türkçedir.
 
 ## Çalıştırma
 
@@ -123,7 +123,7 @@ src/
              katalog (Türkçe bilgi metinleri), sunum, ses, tur, sınav, devreler
   main.ts    hepsini birbirine bağlar
 tests/       Vitest birim testleri
-docs/        VISION.md (şartname), PROGRESS.md (ilerleme, kararlar, denetim, yeniden kullanım rehberi)
+docs/ekran/  ekran görüntüleri
 ```
 
-`src/core/` altındaki altyapı başka makineler (mekanik saat, şanzıman…) için yeniden kullanılmak üzere tasarlandı; nasıl yapılacağı `docs/PROGRESS.md` → “Gelecek makineler için rehber” bölümünde anlatılıyor.
+`src/core/` altındaki altyapı başka makineler (mekanik saat, şanzıman…) için yeniden kullanılmak üzere tasarlandı.

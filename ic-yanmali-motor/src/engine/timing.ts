@@ -7,7 +7,7 @@ import { SPECS } from './specs';
  * a given engine-clock angle.
  *
  * Conventions
- *   crankAngle = 0  → cylinder 1 at its *firing* TDC (PROGRESS decision 4).
+ *   crankAngle = 0  → cylinder 1 at its *firing* TDC.
  *   Cycle angle φ of a cylinder = crankAngle − firingTdc[cyl], wrapped to
  *   [0, 720): 0 power-stroke TDC, 180 BDC, 360 overlap TDC, 540 BDC.
  *   Angles "about X" use R_x(a)·(0,1,0) = (0, cos a, sin a); the crankshaft

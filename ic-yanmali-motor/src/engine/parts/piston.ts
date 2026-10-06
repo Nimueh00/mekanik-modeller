@@ -203,7 +203,7 @@ export interface ValvePocket {
   tiltRad: number;
 }
 
-/** Valve-relief pockets, shared with phase 2 so the valves line up with them. */
+/** Valve-relief pockets, shared with the valve train so the valves line up with them. */
 export function valvePockets(): ValvePocket[] {
   const vp = P.valvePocket;
   const halfAngle = SPECS.valveTrain.includedAngleDeg / 2;

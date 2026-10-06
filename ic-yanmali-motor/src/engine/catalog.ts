@@ -1,7 +1,7 @@
 import type { LayerDef, PartDef, PartInfo, Vec3 } from '../core/registry';
 import { SPECS } from './specs';
 
-/** Disassembly layers, outermost first (VISION §4). */
+/** Disassembly layers, outermost first. */
 export const LAYERS = [
   { id: 'valve-cover', shortTr: 'Supap kapağı', nameTr: 'Supap kapağı', order: 1 },
   { id: 'intake-manifold', shortTr: 'Emme', nameTr: 'Emme manifoldu', order: 2 },
@@ -129,7 +129,7 @@ export const PARTS = {
       material: 'Dövme çelik, cıvatalarla biyele bağlı',
       notes: 'Kapak ve biyel birlikte işlenir; birbirleriyle değiştirilemezler.',
     }),
-  // ------------------------------------------------------------ top end (phase 2)
+  // ------------------------------------------------------------ top end
   cylinderHead: def('cylinder-head', 'Silindir kapağı', 'cylinder-head', [0, 310, 0], 0, {
     function:
       'Yanma odalarını kapatır; emme ve egzoz kanallarını, supap yuvalarını, supap kılavuzlarını, eksantrik yataklarını ve buji yuvalarını taşır.',
@@ -268,7 +268,7 @@ export const PARTS = {
     material: 'Alüminyum döküm, siyah krinkle (buruşuk) boya; lastik conta',
     notes: 'Buji kuyuları kapaktan geçer; bobinler kapağın üstünden takılır. Kapakta karter havalandırması ve yağ doldurma ağzı bulunur.',
   }),
-  // ------------------------------------------------------------ manifolds, chain cover (phase 5)
+  // ------------------------------------------------------------ manifolds, chain cover
   intakeManifold: def('intake-manifold', 'Emme manifoldu', 'intake-manifold', [0, 60, -260], 0, {
     function:
       'Gaz kelebeğinden gelen havayı plenumda (dağıtma odası) toplar ve dört eşit boylu kanal (runner) ile silindirlere dağıtır.',

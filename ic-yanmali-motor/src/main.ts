@@ -76,7 +76,7 @@ setTimeout(() => {
   void document.fonts?.ready.then(() => labels.remeasure());
   const selection = new Selection(stage.renderer.domElement, stage.camera, registry);
 
-  // ---- Phase 4: cut-away, gas flow, combustion ----
+  // ---- cut-away, gas flow, combustion ----
   const section = new SectionView(stage.scene, CAP_STYLES, capStyleOf);
   section.track(registry.root);
   engine.section = section;
@@ -145,7 +145,7 @@ setTimeout(() => {
   });
   cutaway.onChange(() => selection.releaseMaterials());
 
-  // ---- Phase 5: guided tour, quiz, lubrication/cooling circuits ----
+  // ---- guided tour, quiz, lubrication/cooling circuits ----
   const circuits = new Circuits();
   stage.scene.add(circuits.root);
   const coach = new CoachCard(document.body);
