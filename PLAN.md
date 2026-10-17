@@ -25,12 +25,13 @@ Durum: ⏳ bekliyor · 🔨 işçide · 🔍 denetimde · ✅ kabul · ❌ ret
 |-------|--------|------|----------------|-------|
 | P0 | İskelet: `saat/` projesi, `core` kopyası, yer tutucu sahne, duman testi | DeepSeek v4.1 flash | — | ✅ |
 | P1 | Şartname + kinematik çekirdek: diş sayıları, oranlar, yerleşim, 3 Hz vuruş, merkez saniye, zaman modeli, 80 sa rezerv, testler | Opus 5.5 | P0 | ✅ |
-| P2 | Mekanizma geometrisi ve montaj: saat dişlisi profili, plaka ve köprüler, yürüyüş takımı, çıkış (çark, çatal, balans, spiral), akrep-yelkovan takımı, kadran ve ibreler; temel saat malzemeleri (pirinç, rodyum, yakut, mavi çelik); kinematiğe bağlama | Opus 5.5 | P1 | 🔨 |
-| P3 | Kurma ve takvim: zemberek kutusu, kurma-ayar mekanizması, otomatik rotor ve yön değiştirici, tarih mekanizması | Sonnet 5.5 | P2 | ⏳ |
-| P4 | Arayüz: zaman ölçeği, demontaj katmanları, kamera, etiketler, parça bilgisi, yüzey işlemeleri (perlaj, Cenevre çizgileri), tik-tak sesi | Sonnet 5.5 | P2 | ⏳ |
-| P5 | Öğrenme ve bitiş: katalog/tur/sınav metinleri, tur, sınav, URL durumu, mobil, son denetim | Sonnet 5.5 | P3, P4 | ⏳ |
+| P2 | Mekanizma geometrisi ve montaj: saat dişlisi profili, plaka ve köprüler, yürüyüş takımı, çıkış (çark, çatal, balans, spiral), akrep-yelkovan takımı, kadran ve ibreler; temel saat malzemeleri (pirinç, rodyum, yakut, mavi çelik); kinematiğe bağlama | Opus 5.5 | P1 | ✅ |
+| P3 | Kurma ve takvim: zemberek ve cırcır, kurma-ayar mekanizması (taç konumları, ibre ayarı, durdurma), otomatik rotor ve yön değiştirici, tarih mekanizması, rezerv bitince balansın sönümlenmesi, demontaj sırası düzeltmesi | Sonnet 5.5 | P2 | 🔨 |
+| P4 | Arayüz: panel, zaman ölçeği, demontaj, hayalet görünüm, kamera ön ayarları, etiketler, parça seçimi, yüzey işlemeleri (perlaj, Cenevre çizgileri), tik-tak sesi, gölge performansı | Sonnet 5.5 | P2 | 🔨 |
+| P5 | Öğrenme ve bitiş: taç/rotor kontrollerinin panele bağlanması, katalog/tur/sınav metinleri, tur, sınav, URL durumu, mobil, son denetim | Sonnet 5.5 | P3, P4 | ⏳ |
 
 Not: Sahip isteğiyle 12 paket 6'ya indirildi (motor 5 fazda bitmişti). Eski P2+P3+P4 → P2; P5+P5b+P5c → P3; P6+P7 → P4; P8+P9 → P5.
+P3 ve P4 aynı dalda paralel: dosya ayrımı — P3 `watch.ts`, `catalog.ts`, `parts/`, `train.ts`, `watchClock.ts`; P4 `main.ts`, `materials.ts`, yeni `ui/` dosyaları. `main.ts`'te P3 yalnızca başlangıç zamanı satırını değiştirir.
 
 ## Denetim kayıtları
 
@@ -47,3 +48,10 @@ Not: Sahip isteğiyle 12 paket 6'ya indirildi (motor 5 fazda bitmişti). Eski P2
 - Vuruş fazı ±½ vuruş sınırlarında sürekli; çatal ve çıkış çarkı tek fonksiyondan (`beatPhase`).
 - Mutasyon denemesi: oran (96→84), eş eksen (modül 0,09→0,092), plakadan taşma (balans Ø 11), rezerv (8→6 tur), eksenel çakışma (balans çıkış çarkı katında) → hepsi testlerde kırmızı.
 - P2'ye notlar: balans–çıkış çarkı eksenel boşluğu 0,07 mm (dar; geometri y aralıklarına tam uymalı). Çıkış çarkı yalnızca uç çapıyla tanımlı, diş profili P2'de. Rezerv bitince balans salınım ortasında donuyor; P3'te sıfıra sönümlenmeli.
+
+### P2 — KABUL (`6af7533`, `9847f6b`)
+- Bağımsız denetim: `saat` typecheck + test (10 dosya / 81 test; P1'in 4 test dosyası değişmemiş) + build yeşil; `motor` 8 / 59 yeşil; `core` birebir; `specs.ts`'te yalnızca ekleme.
+- Mutasyon: üçüncü pinyon fazı +9° → dişli geçiş testi kırmızı; çıkış ilerlemesi eski doğrusal eşlemeye döndürülünce iç içe geçme ve impuls teması testleri kırmızı.
+- Görsel (başsız Chromium): arka görünüm, yakın plan, yan profil, çıkış yakın planı; konsol temiz. Köprüler organik, yakut yataklar, spiral ve stud doğru yerde.
+- Kabul edilen sapmalar: sıfır düşme (P1'in vuruş merkezleme koşulunun sonucu; bu ölçekte görünmez), club yüzü %85, kilit ~4° teğetten sapma, yakut opak.
+- Açık: gerçek GPU'da fps ölçülmedi (P4 fps göstergesi ekler, sahip yerelde doğrular). Her karede gölge yenileme → P4. Demontajda merkez çark zemberek kutusundan geçiyor → P3. İşçi ek olarak oturum dalına da push etti (zararsız; sonraki prompt'larda yasak).
