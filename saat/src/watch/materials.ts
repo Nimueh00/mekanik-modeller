@@ -1,4 +1,5 @@
-import { Color, DoubleSide, MeshPhysicalMaterial } from 'three';
+import { Color, type DataTexture, DoubleSide, MeshPhysicalMaterial } from 'three';
+import { type Finish, genevaTexture, perlageTexture } from './finishes';
 
 export type WatchMaterialKey =
   | 'rhodium'
@@ -16,9 +17,10 @@ export type WatchMaterialKey =
 
 /**
  * Watch materials, same pattern as the core library: created once, shared;
- * callers that need per-object variations should `.clone()`. Surface
- * finishes (perlage, Côtes de Genève) come with the presentation package;
- * these are the plain metals and stones.
+ * callers that need per-object variations should `.clone()`. The plate carries
+ * perlage and the bridges Côtes de Genève (finishes.ts); both are bump and
+ * roughness maps on the metal, with `userData.finish` marking the materials
+ * whose meshes need the planar UV (`applyPlanarUv`).
  */
 export class WatchMaterials {
   private cache = new Map<WatchMaterialKey, MeshPhysicalMaterial>();
@@ -36,21 +38,32 @@ export class WatchMaterials {
   private create(key: WatchMaterialKey): MeshPhysicalMaterial {
     switch (key) {
       case 'rhodium':
-        // Rhodium-plated brass (plate, bridges): light grey-silver, satin.
-        return new MeshPhysicalMaterial({
-          color: new Color('#d3d5d8'),
-          metalness: 1,
-          roughness: 0.3,
-          clearcoat: 0.25,
-          clearcoatRoughness: 0.3,
-        });
+        // Rhodium-plated brass (bridges, rotor): light grey-silver, satin, with Côtes de Genève stripes.
+        // The stripes are bump plus a roughness map (smoother on the ridges than in the valleys).
+        // Physical anisotropy was tried and dropped: it blows the flat tops out to white.
+        return withFinish(
+          new MeshPhysicalMaterial({
+            color: new Color('#b8bbc0'),
+            metalness: 1,
+            roughness: 0.6,
+          }),
+          'geneva',
+          genevaTexture(),
+          5,
+        );
       case 'plate':
-        // Rhodium-plated main plate: same metal, a duller satin finish so the bridges read on top of it.
-        return new MeshPhysicalMaterial({
-          color: new Color('#b4b7bb'),
-          metalness: 1,
-          roughness: 0.46,
-        });
+        // Rhodium-plated main plate: same metal, a duller satin finish so the bridges read on top of it;
+        // perlage (overlapping brushed circles of about 1 mm).
+        return withFinish(
+          new MeshPhysicalMaterial({
+            color: new Color('#b4b7bb'),
+            metalness: 1,
+            roughness: 0.66,
+          }),
+          'perlage',
+          perlageTexture(),
+          2.2,
+        );
       case 'brass':
         // Gilt brass train wheels: warm gold.
         return new MeshPhysicalMaterial({
@@ -138,4 +151,13 @@ export class WatchMaterials {
         });
     }
   }
+}
+
+/** Put a finish texture on a material as bump and roughness map and mark it for the planar UV. */
+function withFinish(m: MeshPhysicalMaterial, finish: Finish, tex: DataTexture, bump: number): MeshPhysicalMaterial {
+  m.roughnessMap = tex;
+  m.bumpMap = tex;
+  m.bumpScale = bump;
+  m.userData.finish = finish;
+  return m;
 }

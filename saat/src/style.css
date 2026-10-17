@@ -353,3 +353,9 @@ body {
   display: block;
   width: 100%;
 }
+
+/* watch panel: the "bir vuruş" button is only live while paused */
+.pnl-btn:disabled {
+  opacity: 0.38;
+  pointer-events: none;
+}
