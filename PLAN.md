@@ -23,18 +23,14 @@ Durum: ⏳ bekliyor · 🔨 işçide · 🔍 denetimde · ✅ kabul · ❌ ret
 
 | Paket | İçerik | İşçi | Bağımlı olduğu | Durum |
 |-------|--------|------|----------------|-------|
-| P0 | İskelet: `saat/` projesi, `core` kopyası, yer tutucu sahne, duman testi (K4 sonrası ek not: Ø 25,6 mm, otomatik) | DeepSeek v4.1 flash | — | ✅ |
-| P1 | Şartname + kinematik çekirdek: diş sayıları, oranlar, 3 Hz vuruş, merkez saniye düzeni, zaman modeli (gerçek / yavaş / hızlı), çark açıları, 80 sa rezerv, testler | Opus 5.5 | P0 | 🔨 |
-| P2 | Saat dişlisi geometrisi (sikloidal/ogival yaklaşık profil, pinyon, kol/göbek) + ana plaka ve köprüler | Sonnet 5.5 | P1 | ⏳ |
-| P3 | Çıkış mekanizması: çıkış çarkı, çatal (palet taşları), balans çarkı, spiral yay, makara/impuls taşı; geometri + animasyon | Opus 5.5 | P1, P2 | ⏳ |
-| P4 | Montaj: dişli takımı, akrep-yelkovan takımı (motion works), kadran ve ibreler; kinematiğe bağlama | Sonnet 5.5 | P2, P3 | ⏳ |
-| P5 | Kurma-ayar mekanizması (kurgu kolu, kayar pinyon, taç ve cırcır çarkı, tırnak), zemberek kutusu ve güç rezervi | Sonnet 5.5 | P4 | ⏳ |
-| P5b | Otomatik kurma modülü: rotor (bilyalı yatak), çift yönlü kurma (yön değiştirici çarklar), redüksiyon takımı | Opus 5.5 | P5 | ⏳ |
-| P5c | Tarih mekanizması: tarih halkası, 24 saatlik sürücü çark, tarih atlama | Sonnet 5.5 | P4 | ⏳ |
-| P6 | Arayüz: zaman ölçeği, demontaj katmanları, kamera ön ayarları, etiketler, parça bilgisi; saat malzemeleri (pirinç, rodyum, yakut, mavi çelik) | Sonnet 5.5 (+ Gemini kadran dokusu) | P4 | ⏳ |
-| P7 | Ses: vuruşa bağlı tik-tak (Web Audio) | Gemini 4 argon (deneme) | P1 | ⏳ |
-| P8 | İçerik: katalog metinleri, tur ve sınav metinleri | DeepSeek / GLM | P4 (parça listesi) | ⏳ |
-| P9 | Tur, sınav, URL durumu, mobil, son denetim | Sonnet 5.5 | P6, P8 | ⏳ |
+| P0 | İskelet: `saat/` projesi, `core` kopyası, yer tutucu sahne, duman testi | DeepSeek v4.1 flash | — | ✅ |
+| P1 | Şartname + kinematik çekirdek: diş sayıları, oranlar, yerleşim, 3 Hz vuruş, merkez saniye, zaman modeli, 80 sa rezerv, testler | Opus 5.5 | P0 | 🔨 |
+| P2 | Mekanizma geometrisi ve montaj: saat dişlisi profili, plaka ve köprüler, yürüyüş takımı, çıkış (çark, çatal, balans, spiral), akrep-yelkovan takımı, kadran ve ibreler; kinematiğe bağlama | Opus 5.5 | P1 | ⏳ |
+| P3 | Kurma ve takvim: zemberek kutusu, kurma-ayar mekanizması, otomatik rotor ve yön değiştirici, tarih mekanizması | Sonnet 5.5 | P2 | ⏳ |
+| P4 | Arayüz: zaman ölçeği, demontaj katmanları, kamera, etiketler, parça bilgisi, saat malzemeleri, tik-tak sesi | Sonnet 5.5 | P2 | ⏳ |
+| P5 | Öğrenme ve bitiş: katalog/tur/sınav metinleri, tur, sınav, URL durumu, mobil, son denetim | Sonnet 5.5 | P3, P4 | ⏳ |
+
+Not: Sahip isteğiyle 12 paket 6'ya indirildi (motor 5 fazda bitmişti). Eski P2+P3+P4 → P2; P5+P5b+P5c → P3; P6+P7 → P4; P8+P9 → P5.
 
 ## Denetim kayıtları
 
