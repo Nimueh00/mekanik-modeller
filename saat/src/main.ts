@@ -1,9 +1,8 @@
-import { CylinderGeometry, MathUtils, Mesh, Vector3 } from 'three';
-import { MaterialLibrary } from './core/materials';
+import { Vector3 } from 'three';
+import { PartRegistry } from './core/registry';
 import { Stage } from './core/stage';
-import { involuteGearOutline } from './core/geometry/gear';
-import { extrudeAlongY, shapeFrom } from './core/geometry/profile';
-import { bodyAngle } from './watch/train';
+import { WatchMaterials } from './watch/materials';
+import { Watch } from './watch/watch';
 import { WatchClock } from './watch/watchClock';
 import './style.css';
 
@@ -11,48 +10,45 @@ const app = document.getElementById('app')!;
 
 const title = document.createElement('div');
 title.className = 'title-block';
-title.innerHTML = '<h1>Mekanik Saat</h1><p>Otomatik mekanizma · yapım aşamasında</p>';
+title.innerHTML = '<h1>Mekanik Saat</h1><p>Otomatik mekanizma · Ø 25,6 mm · 21.600 A/s</p>';
 const loading = document.createElement('div');
 loading.className = 'loading';
 loading.textContent = 'SAAT HAZIRLANIYOR';
 app.append(title, loading);
 
+// Scene unit = 0.1 mm: the Ø 25.6 mm movement is drawn 256 units across. It
+// stands on its edge, the back (bridges) towards +Z and 12 o'clock up; the
+// default view looks at the back from slightly above and to the side, and
+// orbiting half a turn shows the dial.
 const stage = new Stage({
   container: app,
-  subjectRadius: 160,
+  subjectRadius: 150,
   target: new Vector3(0, 0, 0),
-  cameraPosition: new Vector3(0, 240, 240),
-  floorY: -30,
-  framingAspect: 1.15,
+  cameraPosition: new Vector3(-190, 120, 500),
+  floorY: -142,
+  framingAspect: 1.1,
 });
 
-// Scene unit = 0.1 mm, so the watch is drawn ten times its real size.
-const PLATE_RADIUS = 128; // Ø 25.6 mm
+/** Seconds since 12:00:00 on the local clock (the watch shows local time). */
+function localTime(): number {
+  const d = new Date();
+  return (d.getHours() % 12) * 3600 + d.getMinutes() * 60 + d.getSeconds() + d.getMilliseconds() / 1000;
+}
 
 // Let the loading caption paint before the (synchronous) build starts.
 setTimeout(() => {
-  const materials = new MaterialLibrary();
+  const registry = new PartRegistry();
+  const watch = new Watch(registry, new WatchMaterials());
+  watch.build();
+  // movement +Y (dial) → world −Z, movement −Z (12 o'clock) → world +Y
+  registry.root.rotation.set(Math.PI / 2, Math.PI, 0, 'YXZ');
+  stage.scene.add(registry.root);
 
-  const plateGeo = new CylinderGeometry(PLATE_RADIUS, PLATE_RADIUS, 25, 128);
-  plateGeo.translate(0, -12.5, 0);
-  const plate = new Mesh(plateGeo, materials.get('machinedSteel'));
-
-  const gearShape = shapeFrom(involuteGearOutline({ teeth: 80, module: 1.2 }));
-  const gear = new Mesh(extrudeAlongY(gearShape, 2, 5), materials.get('bronze'));
-
-  for (const mesh of [plate, gear]) {
-    mesh.castShadow = true;
-    mesh.receiveShadow = true;
-  }
-  stage.scene.add(plate, gear);
-
-  // Placeholder wheel shows the fourth (seconds) wheel: real time, beating.
-  const clock = new WatchClock();
+  const clock = new WatchClock({ t: localTime() });
   stage.onFrame((dt) => {
     clock.tick(dt);
-    const opts = { continuous: clock.continuous, amplitude: clock.amplitude };
-    gear.rotation.y = MathUtils.degToRad(bodyAngle('fourth', clock.t, opts));
-    stage.invalidateShadows(); // the spinning gear is a shadow caster that moves every frame
+    watch.update(clock.t, { continuous: clock.continuous, amplitude: clock.amplitude });
+    stage.invalidateShadows(); // wheels, balance and hands cast shadows and move every frame
   });
   stage.start();
   loading.classList.add('is-done');
