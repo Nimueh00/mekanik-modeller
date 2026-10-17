@@ -1,0 +1,94 @@
+import { BEATS_PER_SECOND, ESCAPEMENT, MAINSPRING, MOVEMENT } from './specs';
+
+const DEG = Math.PI / 180;
+const HALF_LIFT = ESCAPEMENT.liftAngleDeg / 2;
+
+/**
+ * Exact pin-in-slot relation, signs aside: the lever angle at which the fork
+ * slot (a line through the pallet pivot) passes through the impulse pin when
+ * the balance is `thetaDeg` from the line of centres.
+ *   pin, seen from the pallet pivot = (D − r·cosθ, r·sinθ)
+ */
+function slotAngle(thetaDeg: number): number {
+  const r = ESCAPEMENT.impulsePinRadius;
+  const t = thetaDeg * DEG;
+  return Math.atan2(r * Math.sin(t), ESCAPEMENT.palletToBalance - r * Math.cos(t)) / DEG;
+}
+
+/** Lever angle at either banking: where the slot leaves the pin at the edge of the lift. */
+export const BANKING_DEG = slotAngle(HALF_LIFT);
+/** Total lever swing, banking to banking. */
+export const LEVER_TOTAL_DEG = 2 * BANKING_DEG;
+
+const clamp = (v: number, lo: number, hi: number) => Math.min(hi, Math.max(lo, v));
+
+/**
+ * Lever (pallet fork) angle for a balance angle, degrees. Inside the lift
+ * window (|θ| < lift/2) the impulse pin drives the fork; outside it the lever
+ * rests on its banking. Clamping θ before the slot relation makes the result
+ * a continuous function of θ that is constant outside the window. The lever
+ * turns in the opposite sense to the balance, as a pin in a slot does.
+ */
+export function leverAngle(balanceDeg: number): number {
+  return -slotAngle(clamp(balanceDeg, -HALF_LIFT, HALF_LIFT));
+}
+
+/**
+ * Balance amplitude from the state of wind (fraction of the effective
+ * mainspring turns left). Simple linear model between the fully-wound and the
+ * end-of-reserve amplitudes; real springs fall off faster near the end.
+ */
+export function balanceAmplitude(windTurns: number): number {
+  const { amplitudeFullDeg: full, amplitudeEmptyDeg: empty } = ESCAPEMENT.balance;
+  const w = clamp(windTurns / MAINSPRING.effectiveTurns, 0, 1);
+  return empty + (full - empty) * w;
+}
+
+export const FULL_AMPLITUDE = ESCAPEMENT.balance.amplitudeFullDeg;
+
+export interface BeatPhase {
+  /** Index of the nearest beat (balance zero crossing at t = beat / 6 s). Integer. */
+  beat: number;
+  /**
+   * Escape progress relative to that beat, in beats, within [−½, ½]: −½ before
+   * the impulse, +½ after it, sweeping in step with the lever during the lift.
+   * Escape position = beat + offset beats.
+   */
+  offset: number;
+  /** Balance angle, degrees. */
+  balance: number;
+  /** Lever angle, degrees. */
+  lever: number;
+}
+
+/**
+ * The one beat-phase function shared by the escapement and the train.
+ *
+ * θ(t) = A·sin(2π f t). Beats are the zero crossings, t_k = k / (2f). Writing
+ * 2f·t = k + u with k the nearest integer keeps the phase small at large t:
+ *   θ = (−1)^k · A · sin(π u)
+ * During beat k the balance swings through the lift window in the direction
+ * σ = (−1)^k, so σ·lever/(2·banking) runs from −½ to +½ while the escape wheel
+ * is unlocked, and sits at ±½ (locked) otherwise. No recoil: it never runs back.
+ */
+export function beatPhase(t: number, amplitude: number = FULL_AMPLITUDE): BeatPhase {
+  const x = t * BEATS_PER_SECOND;
+  const beat = Math.round(x);
+  const u = x - beat;
+  const sigma = beat % 2 === 0 ? 1 : -1;
+  const balance = sigma * amplitude * Math.sin(Math.PI * u);
+  const lever = leverAngle(balance);
+  // lever is −slotAngle, so −σ·lever/(2·banking) is the forward progress
+  const offset = (-sigma * lever) / (2 * BANKING_DEG);
+  return { beat, offset, balance, lever };
+}
+
+/** Balance angle at time t, degrees. */
+export function balanceAngle(t: number, amplitude: number = FULL_AMPLITUDE): number {
+  return beatPhase(t, amplitude).balance;
+}
+
+/** Half-width (s) of the lift window around each beat at a given amplitude. */
+export function liftWindowHalfWidth(amplitude: number = FULL_AMPLITUDE): number {
+  return Math.asin(HALF_LIFT / amplitude) / (2 * Math.PI * MOVEMENT.frequencyHz);
+}

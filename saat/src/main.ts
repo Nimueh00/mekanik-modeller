@@ -3,6 +3,8 @@ import { MaterialLibrary } from './core/materials';
 import { Stage } from './core/stage';
 import { involuteGearOutline } from './core/geometry/gear';
 import { extrudeAlongY, shapeFrom } from './core/geometry/profile';
+import { bodyAngle } from './watch/train';
+import { WatchClock } from './watch/watchClock';
 import './style.css';
 
 const app = document.getElementById('app')!;
@@ -26,7 +28,6 @@ const stage = new Stage({
 
 // Scene unit = 0.1 mm, so the watch is drawn ten times its real size.
 const PLATE_RADIUS = 128; // Ø 25.6 mm
-const GEAR_SPIN = MathUtils.degToRad(6); // radians per second
 
 // Let the loading caption paint before the (synchronous) build starts.
 setTimeout(() => {
@@ -45,8 +46,12 @@ setTimeout(() => {
   }
   stage.scene.add(plate, gear);
 
+  // Placeholder wheel shows the fourth (seconds) wheel: real time, beating.
+  const clock = new WatchClock();
   stage.onFrame((dt) => {
-    gear.rotation.y += GEAR_SPIN * dt;
+    clock.tick(dt);
+    const opts = { continuous: clock.continuous, amplitude: clock.amplitude };
+    gear.rotation.y = MathUtils.degToRad(bodyAngle('fourth', clock.t, opts));
     stage.invalidateShadows(); // the spinning gear is a shadow caster that moves every frame
   });
   stage.start();
