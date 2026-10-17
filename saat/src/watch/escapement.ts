@@ -34,6 +34,12 @@ export function balanceAmplitude(windTurns: number): number {
   return empty + (full - empty) * w;
 }
 
+/** Inverse of `balanceAmplitude`: the state of wind (turns) that gives an amplitude. */
+export function windTurnsForAmplitude(amplitudeDeg: number): number {
+  const { amplitudeFullDeg: full, amplitudeEmptyDeg: empty } = ESCAPEMENT.balance;
+  return clamp((amplitudeDeg - empty) / (full - empty), 0, 1) * MAINSPRING.effectiveTurns;
+}
+
 export const FULL_AMPLITUDE = ESCAPEMENT.balance.amplitudeFullDeg;
 
 export interface BeatPhase {

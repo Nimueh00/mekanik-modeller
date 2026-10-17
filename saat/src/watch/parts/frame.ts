@@ -1,6 +1,6 @@
 import type { BufferGeometry } from 'three';
 import type { P2 } from '../../core/geometry/profile';
-import { AXES, type AxisName, DATE, MOTION_WORKS, MOVEMENT, PLATE_RADIUS, SCENE_PER_MM, towardsClock } from '../specs';
+import { AXES, type AxisName, DATE, MOTION_WORKS, MOVEMENT, PLATE_RADIUS, SCENE_PER_MM, towardsClock, WIND_AXES } from '../specs';
 import { bankingPins, studGeometry } from './escapement';
 import { circle, cylinderY, jewel, merge, screwHead, slab, smoothClosed, strokeOutline, toScene } from './common';
 
@@ -167,8 +167,9 @@ export function buildScrews(): { heads: BufferGeometry; slots: BufferGeometry } 
 }
 
 /**
- * Main plate: Ø 25.6 mm disc with the pivot holes, the dial-side jewels, the
- * studs the minute wheel and date driver turn on, and the banking pins.
+ * Main plate: Ø 25.6 mm disc with the pivot holes (and the hole for the setting
+ * intermediate's axle), the dial-side jewels, the studs the minute wheel and
+ * date driver turn on, and the banking pins.
  */
 export function buildPlate(): FrameGeometry {
   const holes: P2[][] = [];
@@ -176,6 +177,7 @@ export function buildPlate(): FrameGeometry {
   hole(at('centre'), 0.3);
   hole(at('barrel'), 0.32);
   for (const a of ['third', 'escape', 'pallet', 'balance'] as const) hole(at(a), 0.12);
+  hole(WIND_AXES.intermediate, 0.2); // the axle of the intermediate setting wheel runs through the plate
   const disc = slab(circle(PLATE_RADIUS, [0, 0], 256), holes, PLATE_BACK, PLATE_DIAL, 0.06);
   const body: BufferGeometry[] = [disc];
   const ruby: BufferGeometry[] = [];

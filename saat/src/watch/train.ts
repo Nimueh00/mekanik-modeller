@@ -78,6 +78,14 @@ export const BEATS_PER_REV: Readonly<Record<Body, number>> = Object.fromEntries(
   BODIES.map((b) => [b, snap(BEATS_PER_HOUR / Math.abs(REV_PER_HOUR[b]))]),
 ) as Record<Body, number>;
 
+/**
+ * Bodies the hands are set with. Setting the hands turns the cannon pinion on
+ * the centre arbor (it is only friction-fitted) and with it the minute wheel,
+ * the hour wheel and the date driver, while the going train and the seconds
+ * hand go on.
+ */
+export const HAND_BODIES: ReadonlySet<Body> = new Set<Body>(['cannon', 'minuteWheel', 'hourWheel', 'dateDriver']);
+
 const SENSE: Readonly<Record<Body, number>> = Object.fromEntries(
   BODIES.map((b) => [b, Math.sign(REV_PER_HOUR[b])]),
 ) as Record<Body, number>;
@@ -93,6 +101,12 @@ export interface TrainOptions {
   continuous?: boolean;
   /** Balance amplitude, degrees; shapes the impulse only. Default: fully wound. */
   amplitude?: number;
+  /**
+   * Seconds the hands have been set ahead of the movement (negative: back).
+   * The cannon pinion, minute wheel, hour wheel and date driver run on
+   * `t + handOffset`; everything else on `t`. Default 0 (angles unchanged).
+   */
+  handOffset?: number;
 }
 
 /**
@@ -113,19 +127,24 @@ export function escapeBeats(t: number, opts: TrainOptions = {}): { whole: number
 
 /** Angle of one body at clock time t (s), degrees in [0, 360). */
 export function bodyAngle(body: Body, t: number, opts: TrainOptions = {}): number {
-  return angleFromBeats(body, escapeBeats(t, opts));
+  return angleFromBeats(body, escapeBeats(t, opts), handBeats(body, opts));
 }
 
-function angleFromBeats(body: Body, e: { whole: number; frac: number }): number {
+/** Extra escape beats a hand-set body is ahead by (0 for the rest of the train). */
+function handBeats(body: Body, opts: TrainOptions): number {
+  return opts.handOffset && HAND_BODIES.has(body) ? opts.handOffset * BEATS_PER_SECOND : 0;
+}
+
+function angleFromBeats(body: Body, e: { whole: number; frac: number }, extraBeats = 0): number {
   const period = BEATS_PER_REV[body];
   // % on doubles is exact, so reducing the integer part first loses nothing.
-  return wrap360((SENSE[body] * 360 * ((e.whole % period) + e.frac)) / period);
+  return wrap360((SENSE[body] * 360 * ((e.whole % period) + e.frac + extraBeats)) / period);
 }
 
 /** Angles of every body at clock time t, from a single escape position. */
 export function trainAngles(t: number, opts: TrainOptions = {}): Record<Body, number> {
   const e = escapeBeats(t, opts);
-  return Object.fromEntries(BODIES.map((b) => [b, angleFromBeats(b, e)])) as Record<Body, number>;
+  return Object.fromEntries(BODIES.map((b) => [b, angleFromBeats(b, e, handBeats(b, opts))])) as Record<Body, number>;
 }
 
 /** Clockwise angle from 12 o'clock as read on the dial, [0, 360). */
@@ -133,8 +152,11 @@ export function dialReading(angleDeg: number): number {
   return wrap360(-angleDeg);
 }
 
-/** Hands: hour (hour wheel), minute (centre / cannon), seconds (fourth). Rotation-about-+Y degrees. */
+/**
+ * Hands: hour (hour wheel), minute (cannon pinion, which is the centre wheel's
+ * until the hands are set), seconds (fourth). Rotation-about-+Y degrees.
+ */
 export function handAngles(t: number, opts: TrainOptions = {}): { hour: number; minute: number; second: number } {
   const a = trainAngles(t, opts);
-  return { hour: a.hourWheel, minute: a.centre, second: a.fourth };
+  return { hour: a.hourWheel, minute: a.cannon, second: a.fourth };
 }

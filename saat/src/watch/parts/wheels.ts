@@ -2,7 +2,8 @@ import type { BufferGeometry } from 'three';
 import { latheY, type P2, roundCorners } from '../../core/geometry/profile';
 import { gearOutline, rootRadius } from '../geometry/watchGear';
 import { GEAR_PHASE } from '../meshPhase';
-import { DATE, gearByName, MOTION_WORKS, TRAIN } from '../specs';
+import { FINGER_LOCAL_DEG } from '../dateWork';
+import { DATE, DATE_RING, gearByName, MOTION_WORKS, TRAIN } from '../specs';
 import { circle, slab, toScene, tubeY } from './common';
 
 /** Crossing (spoke) style of a wheel, mm. */
@@ -149,56 +150,6 @@ export function buildEscapeArbor(): BufferGeometry[] {
   return [pinion('escapePinion'), pivotedArbor(0.12, BRIDGE_UNDER, PLATE_BACK)];
 }
 
-/** Barrel: drum, toothed rim, cover and arbor, as an outside view (the spring comes in a later package). */
-export function buildBarrel(): BodyGeometry {
-  const d = TRAIN.barrel.drum;
-  const [yLow, yHigh] = d.y; // −2.85 (bridge side) … −1.52 (plate side)
-  const r = d.radius;
-  const bore = 0.62;
-  // drum: bottom disc on the plate side and the wall, as one section (counter-clockwise in (r, y))
-  const drum = latheY(
-    roundCorners(
-      [
-        [bore, yHigh - 0.1],
-        [r - 0.2, yHigh - 0.1],
-        [r - 0.2, yLow + 0.07],
-        [r, yLow + 0.07],
-        [r, yHigh],
-        [bore, yHigh],
-        [bore, yHigh - 0.1],
-      ],
-      [0, 0, 0, 0.03, 0.04, 0, 0],
-      false,
-      2,
-    ),
-    96,
-  );
-  // cover snapped into the top of the wall, slightly domed, with its arbor hole
-  const coverSection: P2[] = [
-    [bore, yLow + 0.03],
-    [r - 0.21, yLow + 0.07],
-    [r - 0.21, yLow + 0.12],
-    [r - 0.08, yLow + 0.12],
-    [r - 0.04, yLow],
-    [r - 0.3, yLow - 0.01],
-    [bore + 0.3, yLow - 0.03],
-    [bore, yLow - 0.02],
-    [bore, yLow + 0.03],
-  ];
-  const cover = latheY(coverSection.reverse(), 96);
-  const teeth = spokedWheel('barrelWheel', { arms: 0, rim: 0, hub: 0, arm: 0 }, r - 0.02);
-  const ar = 0.5;
-  const arb = arbor([
-    [0.25, BRIDGE_UNDER - 0.2],
-    [0.25, BRIDGE_UNDER + 0.02],
-    [ar, yLow - 0.05],
-    [ar, yHigh + 0.05],
-    [0.3, yHigh + 0.1],
-    [0.3, PLATE_BACK + 0.3],
-  ]);
-  return { brass: [toScene(drum), toScene(cover), teeth], steel: [arb] };
-}
-
 /** Cannon pinion: leaves, and the pipe that carries the minute hand. */
 export function buildCannon(): BodyGeometry {
   const [, top] = MOTION_WORKS.cannonPinion.y;
@@ -228,27 +179,29 @@ export function buildHourWheel(): BodyGeometry {
   };
 }
 
-/** Date driver: 64-tooth wheel with its finger (the date ring it drives comes in a later package). */
+/** Date driver: 64-tooth wheel with its finger, which steps the date ring one tooth a day (dateWork.ts). */
 export function buildDateDriver(): BodyGeometry {
   const [, top] = DATE.driver.y;
-  const tip = 3.96;
-  // finger on the top face, pointing along +X of the wheel (rotates with it)
+  const reach = DATE_RING.finger.length;
+  // finger on the top face, built pointing along +X of the wheel's frame and turned to where it must stand at 23:00
   const finger = slab(
     roundCorners(
       [
-        [0.3, -0.18],
-        [tip + 0.4, -0.08],
-        [tip + 0.45, 0.06],
+        [0.3, -0.2],
+        [reach - 0.2, -0.13],
+        [reach, 0],
+        [reach - 0.2, 0.13],
         [0.3, 0.2],
       ],
-      [0, 0.05, 0.05, 0],
+      [0, 0.04, 0.05, 0.04, 0],
       true,
       2,
     ),
     [],
-    top,
-    top + 0.1,
+    DATE_RING.finger.y[0],
+    DATE_RING.finger.y[1],
   );
+  finger.rotateY((FINGER_LOCAL_DEG * Math.PI) / 180);
   return {
     brass: [spokedWheel('dateDriver', { arms: 5, rim: 0.28, hub: 0.55, arm: 0.28 }, 0.2)],
     steel: [toScene(finger), toScene(tubeY(0.2, 0.42, top, top + 0.12, 24))],

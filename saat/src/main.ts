@@ -44,12 +44,6 @@ const stage = new Stage({
 /** How often the shadow map is redrawn while the watch runs. */
 const SHADOW_HZ = 30;
 
-/** Seconds since 12:00:00 on the local clock (the watch shows local time). */
-function localTime(): number {
-  const d = new Date();
-  return (d.getHours() % 12) * 3600 + d.getMinutes() * 60 + d.getSeconds() + d.getMilliseconds() / 1000;
-}
-
 // Let the loading caption paint before the (synchronous) build starts.
 setTimeout(() => {
   const registry = new PartRegistry();
@@ -61,7 +55,7 @@ setTimeout(() => {
   registry.root.updateMatrixWorld(true);
   applyPlanarUv(registry.root); // planar UVs for the finishes (perlage, Côtes de Genève)
 
-  const clock = new WatchClock({ t: localTime() });
+  const clock = WatchClock.fromDate(new Date());
   // the clock sits in a holder: "şimdiki saate dön" replaces it
   const ref: ClockRef = { clock };
 

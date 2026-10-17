@@ -245,7 +245,7 @@ export function towardsClock(from: P2, distance: number, clockDeg: number): P2 {
   return [from[0] + distance * Math.sin(a), from[1] - distance * Math.cos(a)];
 }
 
-const CENTRE: P2 = [0, 0];
+export const CENTRE: P2 = [0, 0];
 
 /** Escape wheel tip radius → pallet pivot distance for tangential locking. */
 export const ESCAPE_TO_PALLET =
@@ -329,3 +329,248 @@ export function gearByName(name: string): TrainGear {
   if (!g) throw new RangeError(`no gear ${name}`);
   return g;
 }
+
+// =====================================================================
+// P3: mainspring and ratchet, keyless works, automatic winding, date
+// =====================================================================
+
+/**
+ * Winding wheels live in two thin levels between the bridges (top at −3.7) and
+ * the rotor weight (bottom at −3.9), i.e. inside `MOVEMENT.envelope.rotor`.
+ * A compound wheel needs both levels (wheel in one, pinion in the other), which
+ * is why the plan is arranged so that a wheel and the pinion of its neighbour
+ * never share a level. Level 1 is the outer one (towards the rotor).
+ */
+export const WINDING_LEVELS = { l1: [-3.895, -3.805] as const, l2: [-3.795, -3.705] as const };
+
+/**
+ * Mainspring in its barrel (P3 drawing). The blade is drawn about three times
+ * thicker than a real one (0.05 mm) so that the coils can be told apart. The
+ * length (≈ 268 mm, a plausible figure) follows from the coil counts below; it
+ * moves the same 8 effective turns.
+ *
+ * Unwound the spring lies against the drum wall (`outerCoilsUnwound` coils)
+ * with just a short tail wrapped on the arbor; winding transfers coils from the
+ * wall to the arbor (see mainspring.ts for the length-conserving transfer).
+ */
+export const SPRING = {
+  thickness: 0.15,
+  /** Axial extent inside the drum (between the cover and the bottom disc). */
+  y: [-2.62, -1.72] as const,
+  /** Arbor core radius the inner coils are wound on. */
+  coreRadius: 0.5,
+  /** Inside radius of the drum wall. */
+  wallRadius: 4.6,
+  innerCoilsUnwound: 0.6,
+  outerCoilsUnwound: 11,
+} as const;
+
+/**
+ * Ratchet wheel (cırcır) on the barrel arbor, above the barrel bridge. Its gear
+ * (level 2) is driven by the crown wheel and by the automatic reduction; the
+ * sawtooth ring on top (level 1) is held by the click. 64 teeth at 0.12 mm
+ * make it as large as the barrel, which is what pushes the crown wheel far
+ * enough from the centre to clear the train; 36 saw teeth give a visible 10°
+ * click pitch.
+ */
+export const RATCHET = {
+  gear: { teeth: 64, module: 0.12, y: WINDING_LEVELS.l2 } as GearSpec,
+  saw: { teeth: 36, rootRadius: 1.75, tipRadius: 2.05, y: WINDING_LEVELS.l1 },
+  hubRadius: 0.6,
+  click: {
+    /** Pivot post: distance from the barrel axis and direction (clock degrees). */
+    pivotDistance: 4.3,
+    pivotClockDeg: 320,
+    armLength: 3.0,
+    y: WINDING_LEVELS.l1,
+  },
+} as const;
+
+/** Where the keyless works sit: stem axis, 2.5 mm above the 3 o'clock line (the line is blocked by a bridge pillar). */
+const STEM_Z = -2.5;
+
+/**
+ * Keyless works. The stem runs along +X at (y, z) = (−2.99, −2.5), i.e. on the
+ * bridge side, in the free strip beside the train (see tests/windingLayout.test.ts).
+ *
+ * Gearing (all teeth counts are our own design):
+ *   crown → stem → sliding pinion (Breguet teeth) → winding pinion (10)
+ *   → crown wheel contrate (16) → crown wheel spur (36) → ratchet (64):
+ *   ratchet turns per crown turn = 10/16 · 36/64 = 0.3516, i.e. 2.84 crown
+ *   turns per spring turn and 22.7 turns for the 8 effective turns, within
+ *   the usual 20–40.
+ *   Hand setting: sliding pinion (10) → intermediate contrate (16) →
+ *   intermediate gear (16) → setting wheel (32) → minute wheel (36) → cannon
+ *   pinion (12): 10/16 · 16/32 · 32/36 · 36/12 = 10/12, i.e. 0.833 minute-hand
+ *   turns (50 min) per crown turn, 8⅓ s of hands per degree.
+ *   Quick date: … → setting wheel (32) → date corrector (16), whose 3-finger
+ *   star moves the ring one tooth per finger: 10/16 · 16/32 · 32/16 = 0.625
+ *   star turns per crown turn = 1.875 teeth, i.e. 192° of crown per day.
+ */
+export const KEYLESS = {
+  stemZ: STEM_Z,
+  stemY: -2.99,
+  stemRadius: 0.2,
+  /** Axial pull of the stem (mm) for crown positions 1, 2, 3. */
+  pull: [0, 0.9, 1.6] as const,
+  /** The sliding pinion follows the yoke one for one. */
+  slidingPinion: { breguetTeeth: 12, leafTeeth: 10, leafModule: 0.1 },
+  windingPinion: { teeth: 10, module: 0.1 } as GearSpec,
+  crownContrate: { teeth: 16, module: 0.1 } as GearSpec,
+  crownSpur: { teeth: 36, module: 0.12, y: WINDING_LEVELS.l2 } as GearSpec,
+  settingContrate: { teeth: 16, module: 0.1 } as GearSpec,
+  settingGear: { teeth: 16, module: 0.1, y: [0.2, 0.32] } as GearSpec,
+  settingWheel: { teeth: 32, module: 0.1, y: [0.2, 0.32] } as GearSpec,
+  corrector: { teeth: 16, module: 0.1, y: [0.2, 0.32] } as GearSpec,
+  correctorFingers: 3,
+  /** Reach of the corrector's star fingers from its axis. */
+  starLength: 1.45,
+  /** Axial stations (mm) of the bridge-side keyless parts. */
+  contrateY: [-3.705, -3.37] as const,
+  /** x of the intermediate contrate wheel, and the rocker steps between the three setting-wheel stations (degrees). */
+  settingX: 7.4,
+  /** The intermediate's axle runs 0.6 mm beside the stem (towards 12 o'clock): the stem must not pass through it. */
+  settingOffsetZ: -0.6,
+  rockerStepDeg: 40,
+  /** Radial width of the contrate teeth rings (mm); the intermediate's is wider so that pulls 2 and 3 both mesh. */
+  contrateWidth: { crown: 0.35, intermediate: 0.6 },
+  /** Yoke stud, and the setting lever's stud and the x its tip rests at on the stem (pulled in). */
+  yokePivot: [5.5, -4.7] as readonly [number, number],
+  leverPivot: [10.9, -5.0] as readonly [number, number],
+  leverTipX: 10.0,
+  /** Crown outside the plate: x of the crown's inner face when the stem is pushed in, and its size. */
+  crown: { x: 13.4, length: 2.0, radius: 1.5 },
+} as const;
+
+/**
+ * Automatic winding: a half-moon rotor on a ball bearing at the centre drives,
+ * through two reverser wheels (one of them turns the other, so they always
+ * turn opposite ways), a reduction wheel into the ratchet. Each reverser wheel
+ * drives its pinion only in the winding direction; the pawl of the other one
+ * slips. Rotor : ratchet = 14/21 · 8/48 · 8/64 = 1/72 (about 72 rotor turns per
+ * spring turn; the usual range for automatics is 1/50 … 1/200).
+ */
+export const AUTOMATIC = {
+  /** The rotor weight, bottom of the bridge envelope: thin base plate + thick weight segment. */
+  rotor: { baseY: [-4.0, -3.9] as const, weightY: [-4.1, -3.9] as const, outerRadius: 12.0, weightInner: 9.2, weightSpanDeg: 150 },
+  /** Ball bearing: inner race is a fixed stud, balls run between it and the rotor hub. */
+  bearing: { innerRadius: 0.4, outerRadius: 0.8, balls: 7, y: [-4.08, -3.92] as const },
+  rotorPinion: { teeth: 14, module: 0.1, y: WINDING_LEVELS.l2 } as GearSpec,
+  reverserWheel: { teeth: 21, module: 0.1, y: WINDING_LEVELS.l2 } as GearSpec,
+  reverserPinion: { teeth: 8, module: 0.08, y: WINDING_LEVELS.l1 } as GearSpec,
+  reductionWheel: { teeth: 48, module: 0.08, y: WINDING_LEVELS.l1 } as GearSpec,
+  reductionPinion: { teeth: 8, module: 0.12, y: WINDING_LEVELS.l2 } as GearSpec,
+  /** Direction of the reduction wheel from the barrel axis (clock degrees). */
+  reductionClockDeg: 182,
+} as const;
+
+/**
+ * Date mechanism. The 31-tooth ring has internal teeth (tips at `tipRadius`,
+ * roots at `rootRadius`) and the numerals on top, read through the window at
+ * 3 o'clock; it lies above the driver wheel (which passes under it).
+ * The driver's finger moves it during 22:00–24:00 (it pushes about 60 % of a
+ * tooth, the jumper snaps the rest); the jumper holds it between the steps.
+ */
+export const DATE_RING = {
+  y: [0.64, 0.84] as const,
+  /** Tooth zone is the lower part of the ring. */
+  teethY: [0.64, 0.72] as const,
+  tipRadius: 7.5,
+  rootRadius: 7.95,
+  outerRadius: 10.7,
+  /** Radius the numerals are centred on (the window centre). */
+  numeralRadius: DIAL.window.centre,
+  /** The ring steps from 22:00 to 24:00 (seconds of the day). */
+  stepStart: 22 * 3600,
+  stepEnd: 24 * 3600,
+  finger: { length: 1.8, y: [0.6, 0.7] as const },
+  /**
+   * Jumper spring: the tip rests in a gap of the ring at `tipClockDeg`; the arm
+   * (length `armLength`, mid-height of the teeth) hangs from a stud inside the
+   * ring, `pivotSwingDeg` away from the radial direction.
+   */
+  jumper: { tipClockDeg: 320, armLength: 3.0, pivotSwingDeg: 55, y: [0.64, 0.72] as const },
+} as const;
+
+// ---------- derived layout of the P3 parts ----------
+
+const sub2 = (a: P2, b: P2): P2 => [a[0] - b[0], a[1] - b[1]];
+const len2 = (a: P2) => Math.hypot(a[0], a[1]);
+
+/** One of the two intersections of circle (c0, r0) and circle (c1, r1); `pick` chooses the side. */
+export function circleIntersection(c0: P2, r0: number, c1: P2, r1: number, pick: 0 | 1): P2 {
+  const d = len2(sub2(c1, c0));
+  const a = (d * d + r0 * r0 - r1 * r1) / (2 * d);
+  const h2 = r0 * r0 - a * a;
+  if (h2 < 0) throw new RangeError('circles do not intersect');
+  const h = Math.sqrt(h2) * (pick === 0 ? 1 : -1);
+  const u: P2 = [(c1[0] - c0[0]) / d, (c1[1] - c0[1]) / d];
+  return [c0[0] + u[0] * a - u[1] * h, c0[1] + u[1] * a + u[0] * h];
+}
+
+/**
+ * Plan positions of the P3 axes, each placed from the axis it meshes with at
+ * exactly the pitch-circle distance (checked again in tests/windingMeshing.test.ts).
+ */
+export const WIND_AXES = (() => {
+  const barrel = AXES.barrel;
+  // crown wheel: on the stem line, meshing the ratchet
+  const dz = STEM_Z - barrel[1];
+  const spurDist = pitchRadius(RATCHET.gear) + pitchRadius(KEYLESS.crownSpur);
+  const crownWheel: P2 = [barrel[0] + Math.sqrt(spurDist * spurDist - dz * dz), STEM_Z];
+  // winding pinion sits on the stem at the contrate's pitch radius
+  const windingPinion: P2 = [crownWheel[0] + pitchRadius(KEYLESS.crownContrate), STEM_Z];
+  // automatic works
+  const reduction = towardsClock(
+    barrel,
+    pitchRadius(RATCHET.gear) + pitchRadius(AUTOMATIC.reductionPinion),
+    AUTOMATIC.reductionClockDeg,
+  );
+  const rp = AUTOMATIC.rotorPinion;
+  const rw = AUTOMATIC.reverserWheel;
+  const reverser1 = circleIntersection(
+    CENTRE,
+    pitchRadius(rp) + pitchRadius(rw),
+    reduction,
+    pitchRadius(AUTOMATIC.reverserPinion) + pitchRadius(AUTOMATIC.reductionWheel),
+    1,
+  );
+  const reverser2 = circleIntersection(
+    reverser1,
+    2 * pitchRadius(rw),
+    reduction,
+    pitchRadius(AUTOMATIC.reverserPinion) + pitchRadius(AUTOMATIC.reductionWheel),
+    1,
+  );
+  // setting works: intermediate beside the stem line; the rocker carries the setting wheel round it
+  const intermediate: P2 = [KEYLESS.settingX, STEM_Z + KEYLESS.settingOffsetZ];
+  const arm = pitchRadius(KEYLESS.settingGear) + pitchRadius(KEYLESS.settingWheel);
+  const need = pitchRadius(MOTION_WORKS.minuteWheel) + pitchRadius(KEYLESS.settingWheel);
+  const rockerTime = circleIntersection(intermediate, arm, AXES.minute, need, 1);
+  const base = Math.atan2(rockerTime[1] - intermediate[1], rockerTime[0] - intermediate[0]);
+  const rockerAt = (k: number): P2 => {
+    const a = base - (k * KEYLESS.rockerStepDeg * Math.PI) / 180;
+    return [intermediate[0] + arm * Math.cos(a), intermediate[1] + arm * Math.sin(a)];
+  };
+  const rockerDate = rockerAt(1);
+  const rockerNeutral = rockerAt(2);
+  const corrector = circleIntersection(
+    rockerDate,
+    pitchRadius(KEYLESS.settingWheel) + pitchRadius(KEYLESS.corrector),
+    CENTRE,
+    DATE_RING.tipRadius + 0.12 - KEYLESS.starLength,
+    1,
+  );
+  return {
+    crownWheel,
+    windingPinion,
+    reduction,
+    reverser1,
+    reverser2,
+    intermediate,
+    rockerTime,
+    rockerDate,
+    rockerNeutral,
+    corrector,
+  } as const;
+})();
