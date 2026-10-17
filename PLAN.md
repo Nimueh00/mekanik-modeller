@@ -23,8 +23,8 @@ Durum: ⏳ bekliyor · 🔨 işçide · 🔍 denetimde · ✅ kabul · ❌ ret
 
 | Paket | İçerik | İşçi | Bağımlı olduğu | Durum |
 |-------|--------|------|----------------|-------|
-| P0 | İskelet: `saat/` projesi, `core` kopyası, yer tutucu sahne, duman testi (K4 sonrası ek not: Ø 25,6 mm, otomatik) | DeepSeek v4.1 flash | — | 🔨 |
-| P1 | Şartname + kinematik çekirdek: diş sayıları, oranlar, 3 Hz vuruş, merkez saniye düzeni, zaman modeli (gerçek / yavaş / hızlı), çark açıları, 80 sa rezerv, testler | Opus 5.5 | P0 | ⏳ |
+| P0 | İskelet: `saat/` projesi, `core` kopyası, yer tutucu sahne, duman testi (K4 sonrası ek not: Ø 25,6 mm, otomatik) | DeepSeek v4.1 flash | — | ✅ |
+| P1 | Şartname + kinematik çekirdek: diş sayıları, oranlar, 3 Hz vuruş, merkez saniye düzeni, zaman modeli (gerçek / yavaş / hızlı), çark açıları, 80 sa rezerv, testler | Opus 5.5 | P0 | 🔨 |
 | P2 | Saat dişlisi geometrisi (sikloidal/ogival yaklaşık profil, pinyon, kol/göbek) + ana plaka ve köprüler | Sonnet 5.5 | P1 | ⏳ |
 | P3 | Çıkış mekanizması: çıkış çarkı, çatal (palet taşları), balans çarkı, spiral yay, makara/impuls taşı; geometri + animasyon | Opus 5.5 | P1, P2 | ⏳ |
 | P4 | Montaj: dişli takımı, akrep-yelkovan takımı (motion works), kadran ve ibreler; kinematiğe bağlama | Sonnet 5.5 | P2, P3 | ⏳ |
@@ -38,4 +38,9 @@ Durum: ⏳ bekliyor · 🔨 işçide · 🔍 denetimde · ✅ kabul · ❌ ret
 
 ## Denetim kayıtları
 
-_(henüz yok)_
+### P0 — KABUL (`39d3cac`)
+- Bağımsız denetim: `saat` typecheck + test (1 dosya / 2 test) + build yeşil; `motor` 8 / 59 yeşil; `diff -r motor/src/core saat/src/core` boş; commit yalnızca `saat/` altında.
+- `package.json`, `package-lock.json`, `index.html` motordan yalnızca ad/başlık satırlarında farklı (kilit `npm ci` ile doğrulanmış — iyi karar).
+- Başsız Chromium'da sahne çiziliyor, konsol hatası yok. Kadraj yer tutucu için sıkı; P4'te kamera ön ayarlarıyla düzelecek.
+- Yer tutucu çark y = 2…5 (plakanın 0,2 mm üstünde) talimat gereği; gerçek eksenel seviyeler P1'de tanımlanır.
+- İşçi notu: DeepSeek v4.1 flash talimata sadık, sapmalarını gerekçeli raporladı → tanımlı mekanik paketlerde kullanılabilir.
