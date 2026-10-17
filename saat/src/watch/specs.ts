@@ -160,6 +160,71 @@ export const ESCAPEMENT = {
   },
 } as const;
 
+/**
+ * Escapement drawing (P2): club teeth and pallet stones, in the plane of the
+ * escape wheel. Only the free design choices are listed; the impulse faces of
+ * the stones and the clubs of the teeth are generated from the motion
+ * (escapeGeometry.ts).
+ */
+export const PALLETS = {
+  /**
+   * Mean lock (incl. run) of the two pallets: lever angle from the banking to
+   * the unlocking point. Assumption: usual Swiss values are ≈ 1.5° lock + ½°
+   * run; the entry/exit split is solved with the rest of the geometry.
+   */
+  lockDeg: 1.8,
+  /** Share of the wheel's step taken on the pallet stone's impulse face; the rest is on the club. */
+  palletShare: 0.65,
+  /** Fraction of the traced club rise that is kept (see escapeGeometry.ts). */
+  clubRelief: 0.85,
+  /** Ruby pallet stones: length out of the pallet frame, mm (their width follows from the impulse). */
+  stoneLength: 0.8,
+  teeth: {
+    /** Tip circle → root circle. */
+    depth: 0.5,
+    /** Locking face leans forward of the radius by this angle. */
+    lockingLeanDeg: 24,
+    rootFillet: 0.03,
+    /** Where the concave back meets the root, degrees behind the locking corner. */
+    backAngleDeg: 16,
+    backBulge: 0.2,
+  },
+} as const;
+
+/** Hole jewels (P2 drawing): ruby radius, the polished sink (olive) around it, and the pivot hole. */
+export const JEWEL = { radius: 0.48, sinkRadius: 0.7, holeRadius: 0.07 } as const;
+
+/**
+ * Balance spring (P2 drawing): a flat Archimedean spiral, inner end pinned to
+ * the collet on the balance staff, outer end in the stud on the cock.
+ */
+export const HAIRSPRING = {
+  turns: 13,
+  innerRadius: 0.48,
+  outerRadius: 1.95,
+  /** Radial thickness and height of the blade, mm. */
+  thickness: 0.035,
+  y: [-3.0, -2.88] as const,
+  /** Direction of the stud from the balance staff, clock degrees. */
+  studClockDeg: 95,
+} as const;
+
+/** Dial and hands (P2 drawing). Hands are stacked above the dial: hour < minute < seconds. */
+export const DIAL = {
+  y: [0.9, 1.3] as const,
+  radius: 12.8,
+  /** Date window at 3 o'clock: centre distance and size, mm. */
+  window: { centre: 9.6, radial: 1.45, tangential: 1.2 },
+  /** Applied hour indices: inner and outer radius. */
+  indices: { inner: 9.7, outer: 11.6 },
+} as const;
+
+export const HANDS = {
+  hour: { length: 6.4, width: 0.75, y: [1.42, 1.47] as const },
+  minute: { length: 9.8, width: 0.6, y: [1.58, 1.63] as const },
+  second: { length: 11.0, tail: 2.6, width: 0.12, y: [1.76, 1.79] as const },
+} as const;
+
 // ---------- derived values ----------
 
 export const PLATE_RADIUS = MOVEMENT.diameter / 2;

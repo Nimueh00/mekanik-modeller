@@ -1,22 +1,12 @@
+import { BANKING_DEG, escapeOffset, slotAngle } from './geometry/escapeGeometry';
 import { BEATS_PER_SECOND, ESCAPEMENT, MAINSPRING, MOVEMENT } from './specs';
 
-const DEG = Math.PI / 180;
 const HALF_LIFT = ESCAPEMENT.liftAngleDeg / 2;
 
-/**
- * Exact pin-in-slot relation, signs aside: the lever angle at which the fork
- * slot (a line through the pallet pivot) passes through the impulse pin when
- * the balance is `thetaDeg` from the line of centres.
- *   pin, seen from the pallet pivot = (D − r·cosθ, r·sinθ)
- */
-function slotAngle(thetaDeg: number): number {
-  const r = ESCAPEMENT.impulsePinRadius;
-  const t = thetaDeg * DEG;
-  return Math.atan2(r * Math.sin(t), ESCAPEMENT.palletToBalance - r * Math.cos(t)) / DEG;
-}
+// The pin-in-slot relation, the bankings and the lever → escape map live with
+// the escapement geometry they are drawn from.
+export { BANKING_DEG, escapeOffset, slotAngle } from './geometry/escapeGeometry';
 
-/** Lever angle at either banking: where the slot leaves the pin at the edge of the lift. */
-export const BANKING_DEG = slotAngle(HALF_LIFT);
 /** Total lever swing, banking to banking. */
 export const LEVER_TOTAL_DEG = 2 * BANKING_DEG;
 
@@ -51,8 +41,8 @@ export interface BeatPhase {
   beat: number;
   /**
    * Escape progress relative to that beat, in beats, within [−½, ½]: −½ before
-   * the impulse, +½ after it, sweeping in step with the lever during the lift.
-   * Escape position = beat + offset beats.
+   * the impulse, +½ after it, sweeping in step with the lever during the
+   * impulse (see `escapeOffset`). Escape position = beat + offset beats.
    */
   offset: number;
   /** Balance angle, degrees. */
@@ -68,8 +58,9 @@ export interface BeatPhase {
  * 2f·t = k + u with k the nearest integer keeps the phase small at large t:
  *   θ = (−1)^k · A · sin(π u)
  * During beat k the balance swings through the lift window in the direction
- * σ = (−1)^k, so σ·lever/(2·banking) runs from −½ to +½ while the escape wheel
- * is unlocked, and sits at ±½ (locked) otherwise. No recoil: it never runs back.
+ * σ = (−1)^k and the lever crosses from one banking to the other; the escape
+ * wheel is unlocked for the middle part of that swing (`escapeOffset`) and
+ * sits at ±½ (locked) otherwise. No recoil: it never runs back.
  */
 export function beatPhase(t: number, amplitude: number = FULL_AMPLITUDE): BeatPhase {
   const x = t * BEATS_PER_SECOND;
@@ -78,9 +69,7 @@ export function beatPhase(t: number, amplitude: number = FULL_AMPLITUDE): BeatPh
   const sigma = beat % 2 === 0 ? 1 : -1;
   const balance = sigma * amplitude * Math.sin(Math.PI * u);
   const lever = leverAngle(balance);
-  // lever is −slotAngle, so −σ·lever/(2·banking) is the forward progress
-  const offset = (-sigma * lever) / (2 * BANKING_DEG);
-  return { beat, offset, balance, lever };
+  return { beat, offset: escapeOffset(lever, sigma), balance, lever };
 }
 
 /** Balance angle at time t, degrees. */
