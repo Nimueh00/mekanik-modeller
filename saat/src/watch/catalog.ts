@@ -49,59 +49,54 @@ const def = (
 export const PARTS = {
   // ------------------------------------------------------------ back
   balanceCock: def('balance-cock', 'Balans köprüsü', 'balance', [0, -595, 0], 0, {
-    function: 'Balansın üst pivotunu taşıyan tek ayaklı köprü; spiralin dış ucunu tutan saplama da ona bağlıdır.',
-    material: 'Rodyum kaplı pirinç, yakut yatak taşı',
-    notes: 'Tek vidayla sabitlenir; servis ve ayar için ilk sökülen parçadır.',
+    function: 'Balansın üst pivotunu taşıyan tek ayaklı köprü; spiral yayın dış ucunu tutan saplama da bu köprüye bağlıdır.',
+    material: 'Rodyum kaplı pirinç; balans pivotu yakut yatak taşında döner',
+    notes: 'Balans pivotları saatin en ince pivotlarıdır; gerçek saatlerde bu yataklar genellikle düşmeye karşı yaylı bir darbe emicinin içine oturur. Modelde köprüde tek bir yakut taş, balansın üst yatağı görünür.',
   }),
   hairspring: def('hairspring', 'Spiral yay', 'balance', [0, -565, 0], 1, {
-    function: 'Balansı denge konumuna geri çeken yay; balansla birlikte salınımın periyodunu belirler.',
-    material: 'Nivarox tipi alaşım (sıcaklıkla esnekliği az değişir)',
-    notes:
-      'Yaklaşık 13 turluk düz Arşimet spirali: iç ucu balans milindeki kolete, dış ucu saplamaya bağlı. Balans döndükçe sarımlar sıkışıp açılır.',
+    function: 'Balansı denge konumuna geri çeken ince spiral yay. Balansla birlikte salınımın periyodunu belirler: periyot, balansın atalet momentiyle yayın sertliğine bağlıdır.',
+    material: 'Sıcaklıkla esnekliği çok az değişen özel çelik alaşımı (nikel-demir esaslı); bazı güncel kalibrelerde silisyum',
+    notes: 'Bu modelde 13 turluk düz bir spiral olarak çizildi (iç yarıçap ≈ 0,5 mm, dış yarıçap ≈ 2 mm): iç ucu balans milindeki kolete, dış ucu köprüdeki saplamaya bağlıdır. Balans döndükçe sarımlar sıkışıp açılır.',
   }),
   balance: def('balance', 'Balans', 'balance', [0, -545, 0], 2, {
-    function: 'Saatin zaman tabanı: spiral yayla birlikte saniyede 3 tam salınım (6 vuruş, 21.600 A/s) yapan çark.',
-    material: 'Glucydur (berilyum bronzu) jant, çelik mil, yakut impuls taşı',
-    notes:
-      'Genlik tam kuruluyken ≈ 300°, rezervin sonunda ≈ 200°. Miline takılı makara tablasındaki impuls taşı her vuruşta çatalın ağzına girer.',
+    function: 'Saatin zaman tabanı: spiral yayla birlikte saniyede 3 tam salınım yapar (6 vuruş, saatte 21.600 vuruş) ve çatalın verdiği itmeyle salınımını sürdürür.',
+    material: 'Jantı berilyum bronzu gibi sert bir bakır alaşımı, mili çelik; impuls taşı yakut',
+    notes: 'Ø 8,8 mm. Bu modelde genlik tam kuruluyken ≈ 300°, rezervin sonuna doğru ≈ 200°. Miline takılı makaradaki yakut impuls taşı her vuruşta çatalın ağzına girer.',
   }),
   bridgeScrews: def('bridge-screws', 'Köprü vidaları', 'bridges', [0, -505, 0], 0, {
     function: 'Köprüleri sütunları üzerinden plakaya bağlar.',
     material: 'Isıl işlemle maviletilmiş çelik',
-    notes: 'Mavi renk boya değildir: çelik ≈ 290 °C’ye ısıtılınca oluşan ince oksit tabakasıdır.',
+    notes: 'Mavi renk boya değildir: çelik yaklaşık 300 °C’ye ısıtılınca yüzeyde oluşan ince oksit tabakasıdır; tabakanın kalınlığı rengi belirler.',
   }),
   barrelBridge: def('barrel-bridge', 'Zemberek kutusu köprüsü', 'bridges', [0, -490, 0], 1, {
-    function: 'Zemberek kutusunun milini taşır; iki sütun arasında kutunun üstünü örter.',
+    function: 'Zemberek milinin üst pivotunu taşır ve zemberek kutusunun üstünü örter.',
     material: 'Rodyum kaplı pirinç',
-    notes: 'Cırcır çarkı, tırnak ve taç çarkı bu köprünün üzerinde, rotorun altındaki ince katlarda durur.',
+    notes: 'Cırcır çarkı, tırnak ve taç çarkı bu köprünün üstünde, rotorun altındaki ince katlarda durur.',
   }),
   trainBridge: def('train-bridge', 'Takım köprüsü', 'bridges', [0, -450, 0], 2, {
-    function: 'Merkez (ve saniye), üçüncü ve çıkış çarklarının üst pivotlarını taşır.',
+    function: 'Merkez (saniye), üçüncü ve çıkış çarklarının üst pivotlarını taşır.',
     material: 'Rodyum kaplı pirinç, yakut yatak taşları',
-    notes: 'Dalgalı kolu üç pivotun üzerinden geçerek iki sütuna uzanır.',
+    notes: 'Çarkların üst pivotları köprüdeki yakut taşlara girer; köprü çıkarılmadan takım çarkları yerinden alınamaz.',
   }),
   palletBridge: def('pallet-bridge', 'Çatal köprüsü', 'bridges', [0, -410, 0], 3, {
     function: 'Çatalın üst pivotunu taşıyan küçük köprü.',
     material: 'Rodyum kaplı pirinç, yakut yatak taşı',
-    notes: 'Çatal ancak bu köprü ve balans söküldükten sonra çıkarılabilir.',
+    notes: 'Servis sırasında önce balans, sonra bu köprü sökülür; çatal ancak ondan sonra yerinden çıkar.',
   }),
   lever: def('lever', 'Çatal (palet çatalı)', 'lever', [0, -375, 0], 0, {
-    function:
-      'Balansla çıkış çarkı arasındaki bağlantı: her vuruşta çarkı yarım diş serbest bırakır ve balansa itme verir.',
+    function: 'Balansla çıkış çarkı arasındaki bağlantı: her vuruşta çıkış çarkını bir adım (yarım diş) serbest bırakır ve balansa bir itme verir.',
     material: 'Çelik gövde, yakut giriş ve çıkış paletleri',
-    notes:
-      'Paletler 2½ diş aralıklı; çatal iki emniyet pimi arasında ≈ 10° salınır. Emniyet pimi, makaradaki yarımay oyuğu dışında balansın çatalı yanlışlıkla çevirmesini önler.',
+    notes: 'Paletler çıkış çarkının 2½ dişini kucaklar; çatal iki sınırlayıcı pim arasında yalnızca ≈ 10° salınır. Çatalın ucundaki emniyet oku, makaradaki yarımay oyuğu dışında balansın çatalı yanlışlıkla açmasını önler.',
   }),
   escapeWheel: def('escape-wheel', 'Çıkış çarkı', 'train', [0, -335, 0], 0, {
-    function: 'Takımdan gelen gücü çatala aktaran 15 dişli çark.',
-    material: 'Sertleştirilmiş, cilalı çelik; çelik pinyon',
-    notes:
-      'Ayaklı ("club") dişlerin her birinde ayrı bir kilit yüzü ve impuls yüzü vardır. Vuruş başına 12°, dakikada 12 tur döner.',
+    function: 'Takımın son çarkı: takımdan gelen gücü çatala aktarır ve her vuruşta bir adım ilerler.',
+    material: 'Sertleştirilmiş, cilalı çelik',
+    notes: '15 diş; vuruş başına 12°, yani iki vuruşta bir diş ilerler ve dakikada 12 tur atar: 12 × 30 = 360 vuruş/dk = saniyede 6 vuruş. Ayaklı (“club”) dişlerin her birinde ayrı bir kilit yüzü ve impuls yüzü vardır.',
   }),
   fourthWheel: def('fourth-wheel', 'Dördüncü çark (saniye çarkı)', 'train', [0, -295, 0], 1, {
     function: 'Dakikada bir tur atar; uzun mili merkez borunun içinden geçerek saniye ibresini taşır.',
     material: 'Yaldızlı pirinç çark, çelik pinyon ve mil',
-    notes: '96 diş, çıkış pinyonu 8 yaprak: 12:1.',
+    notes: '96 diş; çıkış pinyonunun 8 yaprağıyla kavrar: 96/8 = 12:1, yani çıkış çarkı dakikada 12 tur atar.',
   }),
   thirdWheel: def('third-wheel', 'Üçüncü çark', 'train', [0, -230, 0], 2, {
     function: 'Merkez çarktan dördüncü çarka hızı artırır.',
@@ -109,10 +104,9 @@ export const PARTS = {
     notes: '75 diş, 10 yapraklı pinyon. 80/10 × 75/10 = 60: merkez çark saatte, dördüncü çark dakikada bir tur.',
   }),
   centreWheel: def('centre-wheel', 'Merkez çark (yelkovan çarkı)', 'centre', [0, -110, 0], 0, {
-    function: 'Saatte bir tur atar; kanon pinyonu üzerinden yelkovanı taşır.',
+    function: 'Saatte bir tur atar; yelkovan, sürtünmeyle takılı kanon pinyonu aracılığıyla bu çarkın miline bağlıdır.',
     material: 'Yaldızlı pirinç çark, çelik pinyon ve boru',
-    notes:
-      'Zemberek kutusu (100 diş) onu 10 yapraklı pinyonundan sürer: kutu 10 saatte bir tur atar. Kutunun altında kaldığı için söküm sırasında ona en son sıra gelir.',
+    notes: '80 diş. Zemberek kutusu (100 diş) onu 10 yapraklı pinyonundan sürer: kutu 10 saatte bir tur atar. Modelde kutunun altında kaldığı için söküm sırasında ona en son sıra gelir.',
   }),
   barrel: def('barrel', 'Zemberek kutusu (tambur ve diş jantı)', 'barrel', [0, -125, 0], 3, {
     function: 'Zembereği barındırır; dişli jantı gücü takıma verir, 10 saatte bir tur atar.',
@@ -137,36 +131,35 @@ export const PARTS = {
     notes: 'Kurulurken mil tamburun dönüş yönünde ileri döner; tırnak dişlerin üzerinden atlar, geri dönmesine izin vermez.',
   }),
   plate: def('plate', 'Ana plaka', 'plate', [0, 0, 0], 0, {
-    function:
-      'Mekanizmanın taşıyıcı tabanı: pivot delikleri, yakut yataklar, köprü sütunları, emniyet pimleri ve akrep-yelkovan saplamaları bunun üzerindedir.',
+    function: 'Mekanizmanın taşıyıcı tabanı: pivot delikleri, yakut yataklar, köprü sütunları, emniyet pimleri ve akrep-yelkovan saplamaları bunun üzerindedir.',
     material: 'Rodyum kaplı pirinç',
-    notes: 'Ø 25,6 mm (11½ ligne).',
+    notes: 'Ø 25,6 mm (11½ ligne). Plakanın kadran yüzünde akrep-yelkovan takımı ve tarih, arka yüzünde takım çarkları ve köprüler bulunur.',
   }),
   // ------------------------------------------------------------ dial side
   secondHand: def('second-hand', 'Saniye ibresi', 'hands', [0, 225, 0], 0, {
-    function: 'Merkez saniye: dördüncü çarkın miline takılıdır, saniyede 6 küçük adım atar.',
-    material: 'Maviletilmiş çelik',
-    notes: 'Kuyruğundaki karşı ağırlık ibreyi mil üzerinde dengeler.',
+    function: 'Merkez saniye: dördüncü çarkın miline takılıdır ve saniyede 6 küçük adım atar.',
+    material: 'Gerçek saatlerde genellikle maviletilmiş ya da cilalı çelik, pirinç veya boyalı metal',
+    notes: 'Kuyruğundaki karşı ağırlık ibreyi mil üzerinde dengeler. Adımlar çıkış mekanizmasının vuruşlarıdır: 6 vuruş/s = 6 adım/s.',
   }),
   minuteHand: def('minute-hand', 'Yelkovan', 'hands', [0, 215, 0], 1, {
-    function: 'Kanon pinyonunun borusuna takılı; saatte bir tur.',
-    material: 'Cilalı, rodyum kaplı pirinç',
+    function: 'Kanon pinyonunun borusuna takılı; saatte bir tur atar.',
+    material: 'Gerçek saatlerde genellikle rodyum ya da nikel kaplı, cilalı pirinç',
     notes: 'Kanon pinyonu sürtünmeyle takılı olduğundan yelkovan saat ayarlanırken takımdan bağımsız çevrilebilir.',
   }),
   hourHand: def('hour-hand', 'Akrep', 'hands', [0, 205, 0], 2, {
-    function: 'Akrep çarkının borusuna takılı; 12 saatte bir tur.',
-    material: 'Cilalı, rodyum kaplı pirinç',
-    notes: 'İbreler kadranın üstünde sırayla yükselir: akrep, yelkovan, saniye.',
+    function: 'Akrep çarkının borusuna takılı; 12 saatte bir tur atar.',
+    material: 'Gerçek saatlerde genellikle rodyum ya da nikel kaplı, cilalı pirinç',
+    notes: 'İbreler kadranın üstünde sırayla yükselir: akrep, yelkovan, saniye. Yelkovan akrebin 12 katı hızlı döner.',
   }),
   dial: def('dial', 'Kadran', 'dial', [0, 190, 0], 0, {
     function: 'Okuma yüzü: saat işaretleri, dakika taksimatı ve saat 3’te tarih penceresi.',
-    material: 'Gümüş kaplamalı pirinç, çakma indeksler',
+    material: 'Gümüş ya da lake kaplı pirinç; çakma metal indeksler',
     notes: 'Saat 3’teki pencerenin altında tarih halkası döner; pencere her an tek bir rakamı gösterir.',
   }),
   hourWheel: def('hour-wheel', 'Akrep çarkı', 'motion-works', [0, 160, 0], 0, {
     function: '12 saatte bir tur atar ve akrebi taşır; tarih sürücüsünü de çevirir.',
     material: 'Yaldızlı pirinç, çelik boru',
-    notes: '32 diş, ara pinyon 8 yaprak: 4:1.',
+    notes: '32 diş; ara çarkın 8 yapraklı pinyonu onu çevirir: 4:1. Kanon pinyonuyla aynı eksendedir, bu yüzden akrep ve yelkovan aynı merkezde döner.',
   }),
   dateDriver: def('date-driver', 'Tarih sürücü çarkı', 'motion-works', [0, 145, 0], 1, {
     function: '24 saatte bir tur atar; parmağı her gece tarih halkasını bir diş ilerletir.',
@@ -176,24 +169,23 @@ export const PARTS = {
   minuteWheel: def('minute-wheel', 'Ara çark (dakika çarkı)', 'motion-works', [0, 130, 0], 2, {
     function: 'Kanon pinyonundan akrep çarkına 12:1 indirgemeyi yapan ara çark ve pinyon.',
     material: 'Yaldızlı pirinç çark, çelik pinyon',
-    notes: '36/12 × 32/8 = 12.',
+    notes: '36 diş ve 8 yapraklı pinyon: 36/12 × 32/8 = 12. Yelkovan 12 tur atarken akrep 1 tur atar.',
   }),
   cannonPinion: def('cannon-pinion', 'Kanon pinyonu', 'motion-works', [0, 25, 0], 3, {
     function: 'Merkez çarkın borusuna sürtünmeyle takılıdır; yelkovanı taşır ve akrep-yelkovan takımını sürer.',
     material: 'Çelik',
-    notes: '12 yaprak; borusu yelkovanın oturduğu yerdir.',
+    notes: '12 yaprak; borusu yelkovanın oturduğu yerdir. Sürtünme, saat ayarında ibrelerin takımdan bağımsız dönmesine izin verir, normal çalışmada ise takımı sürmeye yeter.',
   }),
   // ------------------------------------------------------------ rotor, winding wheels
   rotor: def('rotor', 'Otomatik rotor', 'rotor', [0, -685, 0], 0, {
     function: 'Yarım ay biçimli salınım ağırlığı: bileğin hareketiyle her iki yöne de döner ve zembereği kurar.',
-    material: 'Rodyum kaplı taban, kalın dış ağırlık segmenti (ağır alaşım), çelik pinyon',
-    notes:
-      'Merkez eksende bir bilyalı rulmanla döner; altındaki pinyonu iki yön değiştirici çarka bağlıdır. Yaklaşık 72 rotor turu 1 zemberek turu kurar.',
+    material: 'Taban ve pinyon çelik ya da pirinç; ağırlık segmenti yoğun bir metal (ör. tungsten alaşımı ya da altın)',
+    notes: 'Merkez eksende bir bilyalı rulmanla döner; altındaki pinyonu iki yön değiştirici çarka bağlıdır. Modelde yaklaşık 72 rotor turu 1 zemberek turu kurar.',
   }),
   rotorBearing: def('rotor-bearing', 'Rotor bilyalı rulmanı', 'rotor', [0, -655, 0], 1, {
     function: 'Rotorun sürtünmesiz dönmesini sağlar: iç bileziği köprüye vidalı saplamadır, bilyalar rotorun göbeğiyle saplama arasında yuvarlanır.',
-    material: 'Çelik saplama, çelik bilya ve kafes',
-    notes: 'Bilya kafesi rotorun yaklaşık %62’si kadar hızla döner.',
+    material: 'Çelik saplama, çelik (ya da seramik) bilyalar ve kafes',
+    notes: 'İç bilezik sabit olduğundan bilya kafesi rotorun hızının yalnızca bir kısmıyla döner: burada 0,8 / (0,4 + 0,8) ≈ %67.',
   }),
   ratchetWheel: def('ratchet-wheel', 'Cırcır çarkı', 'winding', [0, -640, 0], 2, {
     function: 'Zemberek milinin üstündedir; taç çarkı ve otomatik kurma onu çevirerek zembereği kurar. Testere dişli halkasını tırnak tutar.',
@@ -216,19 +208,19 @@ export const PARTS = {
     notes: 'Altında kurma pinyonunun yapraklarının girdiği 16 dişli kontrat halkası vardır. Taç oranı: 10/16 · 36/64 ≈ 0,35 cırcır turu / taç turu, yani zemberek turu başına 2,84 taç turu.',
   }),
   reverser1: def('reverser-1', 'Yön değiştirici çark 1', 'winding', [0, -585, 0], 4, {
-    function: 'Rotor pinyonuyla doğrudan kavrar; yalnızca rotor tek yönde dönerken pinyonunu sürer.',
+    function: 'Rotorun pinyonuyla doğrudan kavrar; pinyonunu yalnızca rotor tek yönde dönerken sürer.',
     material: 'Yaldızlı pirinç çark, çelik pinyon',
-    notes: 'Çark rotora ters yönde döner; üstteki pinyon zemberek yönünde dönebilmek için kendi kavramasını kullanır.',
+    notes: 'Rotorla kavradığı için rotora ters yönde döner. Pinyonu çarka bir yönde tutunur (tırnaklı kavrama), öbür yönde boşta kayar.',
   }),
   reverser2: def('reverser-2', 'Yön değiştirici çark 2', 'winding', [0, -570, 0], 5, {
     function: 'Birinci çarkla kavrar, bu yüzden rotorla aynı yönde döner; rotor öbür yöne dönünce kurmayı o üstlenir.',
     material: 'Yaldızlı pirinç çark, çelik pinyon',
-    notes: 'İki yön değiştirici birlikte rotorun her iki yönünü de zemberek yönüne çevirir.',
+    notes: 'İki yön değiştirici birlikte rotorun her iki dönüş yönünü zemberek yönüne çevirir; rotorun yarı boşa dönmesi böylece önlenir.',
   }),
   reductionWheel: def('reduction-wheel', 'Redüksiyon çarkı', 'winding', [0, -555, 0], 6, {
     function: 'Yön değiştirici pinyonlarının hareketini yavaşlatarak cırcıra aktarır.',
     material: 'Yaldızlı pirinç çark, çelik pinyon',
-    notes: 'Rotor : cırcır = 14/21 · 8/48 · 8/64 = 1/72.',
+    notes: 'Rotor : cırcır = 14/21 · 8/48 · 8/64 = 1/72. 48 dişli çark ve 8 yapraklı pinyonu birlikte döner.',
   }),
   // ------------------------------------------------------------ keyless works (back)
   settingLever: def('setting-lever', 'Ayar kolu', 'keyless-dial', [0, 50, 0], 6, {
@@ -249,7 +241,7 @@ export const PARTS = {
   slidingPinion: def('sliding-pinion', 'Kayar pinyon', 'keyless', [0, -55, 0], 1, {
     function: 'Kurma kolunun karesine geçmiştir, boyuna kayar. Konum 1’de Breguet dişleriyle kurma pinyonuna tutunur; dışarı çekilince yaprakları ayar ara çarkına kavrar.',
     material: 'Çelik',
-    notes: 'Breguet dişleri bir yönde tutar, öbür yönde kayar: bu yüzden taç ters yönde döndürülünce zemberek sökülmez. Taç oranları: bir taç turu = 0,83 yelkovan turu (konum 3).',
+    notes: 'Breguet dişleri bir yönde tutar, öbür yönde kayar: bu yüzden taç ters yönde döndürülünce zemberek geri boşalmaz. Bir taç turu = 0,83 yelkovan turu (konum 3).',
   }),
   windingPinion: def('winding-pinion', 'Kurma pinyonu', 'keyless', [0, -25, 0], 2, {
     function: 'Kurma kolunda boşta durur; Breguet dişlerinden aldığı hareketi taç çarkının kontrat dişlisine verir.',
@@ -287,7 +279,7 @@ export const PARTS = {
   intermediateGear: def('intermediate-gear', 'Ayar ara çarkı', 'keyless-dial', [0, 100, 0], 3, {
     function: 'Plakadan geçen mili ile arka taraftaki kontrat dişlisine bağlıdır; kadran tarafındaki dişlisi ayar çarkını çevirir.',
     material: 'Yaldızlı pirinç dişli, çelik mil',
-    notes: 'Ayar çarkının sallandığı eksendir.',
+    notes: 'Ayar çarkının sallandığı eksendir; 16 dişi, plakadan geçen milin öbür ucundaki kontrat dişlisiyle birlikte döner.',
   }),
   settingLeverSpring: def('setting-lever-spring', 'Ayar kolu yayı', 'keyless-dial', [0, 65, 0], 4, {
     function: 'Ayar kolunu kurma kolunun yivlerine bastırır.',
