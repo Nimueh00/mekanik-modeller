@@ -6,17 +6,27 @@ import { OcclusionProbe } from './core/occlusion';
 import { PartRegistry } from './core/registry';
 import { Selection } from './core/selection';
 import { Stage } from './core/stage';
+import { CoachCard } from './core/ui/coach';
 import { Panel } from './core/ui/panel';
+import { type StateMap, UrlState } from './core/urlState';
+import { PARTS } from './watch/catalog';
 import { applyPlanarUv } from './watch/finishes';
 import { WatchMaterials } from './watch/materials';
 import { Watch } from './watch/watch';
-import { WatchClock } from './watch/watchClock';
+import { TIME_SCALES, WatchClock } from './watch/watchClock';
 import { GhostView } from './ui/ghost';
 import { partCorners, viewExtents, zoomToFit } from './ui/fit';
+import { attachCrownDrag } from './ui/crownDrag';
+import type { LearnEnv } from './ui/learn';
 import { buildOpenUi } from './ui/openUi';
+import { Quiz } from './ui/quiz';
+import { DEFAULT_SPEED_INDEX, decodeShare, encodeShare } from './ui/shareState';
 import { WatchSound } from './ui/sound';
+import { speedIndex } from './ui/speeds';
+import { Tour } from './ui/tour';
 import { cameraPresets, labelDefs } from './ui/views';
-import { buildWatchUi, type ClockRef } from './ui/watchUi';
+import { buildWatchUi, type ClockRef, clockAtTime } from './ui/watchUi';
+import { buildWindingUi } from './ui/windingUi';
 import './style.css';
 
 const app = document.getElementById('app')!;
@@ -89,9 +99,14 @@ setTimeout(() => {
   }, 0);
 
   const panel = new Panel(document.body, { title: 'KONTROL', hideLabel: 'Gizle', showLabel: 'KONTROL' });
+  const learnSec = panel.section('Öğrenme');
   const sound = new WatchSound(() => ref.clock);
   const ui = buildWatchUi(panel, ref, { sound, ghost });
+  const winding = buildWindingUi(panel, ref);
   const open = buildOpenUi(panel, { disassembly, rig, registry, labels, selection, presets });
+  // the footer line (size, fps) closes the panel: the sections added after it come before it
+  const footer = panel.el.querySelector('.pnl-footer');
+  if (footer) footer.parentElement!.append(footer);
   // Inner views (escapement, train): the rotor covers the balance and the train, and its weight is gilt brass that
   // the ghost view leaves solid, so the rotor layer is switched off on entering them while the movement is closed
   // (and the train view also goes ghost to see through the bridges). The other views bring the rotor back, but only
@@ -113,16 +128,163 @@ setTimeout(() => {
   };
   for (const p of presets) p.onEnter = p.id === 'escapement' ? inner(false) : p.id === 'train' ? inner(true) : outer;
 
-  // Free area for the model: right of the panel (desktop) or above the bottom sheet (phones).
+  // Disassembly back-off. Opening the movement pushes parts along the line of sight (towards the viewer, for the back
+  // side), and in perspective they would swell and pass the camera, so the camera backs off with the nearest part:
+  // `dolly` is how far, and `applied` how much of it the camera position carries right now. The camera rig and the
+  // orbit controls work on the camera without it (it is taken off at the start of a frame and put back at the end),
+  // so a preset or a shared link that sets the camera absolutely does not leave a stale back-off behind.
+  let dolly = 0;
+  let applied = 0;
+  const viewDir = new Vector3();
+  const shiftCamera = (d: number) => {
+    if (d === 0) return;
+    viewDir.subVectors(stage.camera.position, stage.controls.target).normalize();
+    stage.camera.position.addScaledVector(viewDir, d);
+  };
+  const plainGo = rig.go.bind(rig);
+  const plainJump = rig.jump.bind(rig);
+  rig.go = (preset, seconds) => {
+    shiftCamera(-applied); // the tween starts from the camera as it is without the back-off
+    plainGo(preset, seconds);
+    shiftCamera(applied);
+  };
+  rig.jump = (preset) => {
+    shiftCamera(-applied);
+    applied = 0;
+    plainJump(preset); // the next frame puts the back-off on again
+  };
+
+  // ---- guided tour, quiz: they drive the same controls the panel does, through one narrow interface ----
+  const coach = new CoachCard(document.body);
+  const env: LearnEnv = {
+    getClock: () => ref.clock,
+    setClock: (c) => {
+      ref.clock = c;
+      ui.refresh();
+    },
+    setSpeed: (scale) => ui.setSpeed(scale),
+    setPaused: (paused) => ui.setPaused(paused),
+    getView: () => ghost.mode,
+    setView: (v) => ui.setView(v),
+    getOpen: () => disassembly.amount,
+    openTo: (amount) => disassembly.animateTo(amount),
+    cameraPose: () => {
+      const c = stage.camera.position;
+      const t = stage.controls.target;
+      return { position: [c.x, c.y, c.z], target: [t.x, t.y, t.z] };
+    },
+    activePreset: () => (presets.some((p) => p.id === rig.activeId) ? rig.activeId : null),
+    goPreset: (id, seconds) => rig.go(presets.find((p) => p.id === id)!, seconds),
+    // `outer` puts back a rotor that an inner view hid
+    goPose: (pose, seconds) => rig.go({ id: 'learn-return', label: '', position: pose.position, target: pose.target, onEnter: outer }, seconds),
+    labelsOn: () => labels.enabled,
+    setLabels: (on) => labels.setEnabled(on),
+    selected: () => selection.selected?.def.id ?? null,
+    select: (id) => selection.select(id),
+    onSelect: (l) => selection.onChange((p) => l(p?.def.id ?? null)),
+    layers: () => Object.fromEntries(registry.populatedLayers().map((l) => [l.id, registry.inLayer(l.id).every((p) => p.root.visible)])),
+    setLayer: (id, on) => open.setLayerVisible(id, on),
+  };
+  const tour = new Tour(env, coach);
+  const quiz = new Quiz(env, coach, (id) => registry.get(id));
+  const learnGrid = learnSec.buttons<'tour' | 'quiz'>(
+    [
+      { id: 'tour', label: 'Turu başlat', title: '7 adımlı rehberli tur: kamera, görünüm, hız ve demontaj adım adım ilerler' },
+      { id: 'quiz', label: 'Mini sınav', title: '10 soru: parçayı bul, say, kavra' },
+    ],
+    {
+      columns: 2,
+      onSelect: (id) => {
+        // on phones the panel (a bottom sheet) would cover the model: tuck it away during a tour or quiz
+        if (window.innerWidth < 760) panel.setOpen(false);
+        if (id === 'tour') {
+          quiz.stop();
+          tour.start();
+        } else {
+          tour.stop();
+          quiz.start();
+        }
+        syncLearn();
+      },
+    },
+  );
+  const syncLearn = () => learnGrid.setSelected(tour.active ? 'tour' : quiz.active ? 'quiz' : null);
+  tour.onEnd = syncLearn;
+  quiz.onEnd = syncLearn;
+  learnSec.note('Tur mekanizmayı yedi adımda anlatır (genel bakış → enerji → takım → çıkış → balans → kadran → kurma-ayar ve demontaj). Sınav on soru sorar ve skoru tutar. İkisi de bitince her şeyi eski hâline getirir.');
+
+  // the crown can be turned by dragging it in the model
+  attachCrownDrag({
+    container: app,
+    canvas: stage.renderer.domElement,
+    camera: stage.camera,
+    registry,
+    filter: (obj) => !ghost.isGhost(obj as never),
+    onTurn: (deg) => winding.turnBy(deg),
+    onClick: () => selection.select(PARTS.windingStem.id),
+  });
+
+  // ---- shareable state in the URL (#a=…&cam=…&p=…) ----
+  const url = new UrlState(
+    () => {
+      // the camera without the back-off: the opened movement backs the camera off again by itself when the link is loaded
+      const t = stage.controls.target;
+      const c = viewDir.subVectors(stage.camera.position, t).normalize().multiplyScalar(-applied).add(stage.camera.position);
+      return encodeShare({
+        open: disassembly.amount,
+        camera: [c.x, c.y, c.z, t.x, t.y, t.z],
+        part: selection.selected?.def.id ?? null,
+        view: ghost.mode,
+        speed: speedIndex(ref.clock.timeScale) < 0 ? DEFAULT_SPEED_INDEX : speedIndex(ref.clock.timeScale),
+        pausedAt: ref.clock.paused ? ref.clock.t : null,
+      }) as StateMap;
+    },
+    (st) => {
+      const d = decodeShare(st, new Set(registry.all().map((p) => p.def.id)));
+      ui.setView(d.view ?? 'solid');
+      disassembly.stopAnimation();
+      disassembly.setAmount(d.open ?? 0);
+      if (d.speed !== null) ui.setSpeed(TIME_SCALES[d.speed]!);
+      if (d.pausedAt !== null) {
+        ref.clock = clockAtTime(ref.clock, d.pausedAt);
+        ui.refresh();
+      }
+      if (d.camera) rig.jump({ id: 'url', label: '', position: [d.camera[0], d.camera[1], d.camera[2]], target: [d.camera[3], d.camera[4], d.camera[5]] });
+      selection.select(d.part);
+    },
+  );
+  url.load();
+  url.start();
+  const shareGrid = panel.find('Bakış açısı')!.buttons<'link'>(
+    [{ id: 'link', label: '🔗 Bu görünümün bağlantısını kopyala', title: 'Açıklık, kamera, seçili parça, görünüm, hız ve (duraklatılmışsa) saat bağlantıya yazılır' }],
+    {
+      columns: 1,
+      onSelect: () => {
+        const link = url.link();
+        const done = (ok: boolean) => {
+          shareGrid.setLabel('link', ok ? '✓ Bağlantı kopyalandı' : 'Adres çubuğundaki bağlantıyı paylaşın');
+          setTimeout(() => shareGrid.setLabel('link', '🔗 Bu görünümün bağlantısını kopyala'), 1800);
+        };
+        navigator.clipboard?.writeText(link).then(() => done(true), () => done(false)) ?? done(false);
+      },
+    },
+  );
+
+  // Free area for the model: right of the panel (desktop) or above the bottom sheet / the guide card (phones).
+  let bottomInset = -1;
   const syncInset = () => {
     const narrow = window.innerWidth < 760;
-    stage.setInsets(panel.occupiedWidth, panel.occupiedHeight);
+    coach.el.classList.toggle('is-top', panel.open && narrow);
+    const card = narrow && coach.visible && !panel.open ? coach.el.getBoundingClientRect().height + 20 : 0;
+    const bottom = Math.max(panel.occupiedHeight, card);
+    bottomInset = bottom;
+    stage.setInsets(panel.occupiedWidth, bottom);
     labels.maxVisible = narrow ? 4 : 99;
     labels.area = {
       left: 0,
       top: narrow ? 56 : 84,
       right: window.innerWidth - panel.occupiedWidth,
-      bottom: window.innerHeight - panel.occupiedHeight,
+      bottom: window.innerHeight - bottom,
     };
   };
   panel.onToggle(syncInset);
@@ -134,9 +296,7 @@ setTimeout(() => {
   let fitTarget = 1;
   let fitKey = '';
   const corners: Vector3[] = [];
-  const viewDir = new Vector3();
   const fromCam = new Vector3();
-  let dolly = 0; // distance the camera has backed off for the open movement
   stage.controls.maxDistance = 6000;
   // Shadows are redrawn only when the picture of the casters changes (Stage.invalidateShadows).
   let shadowKey = '';
@@ -145,11 +305,12 @@ setTimeout(() => {
   let lastAmount = 0;
   stage.onFrame((dt, elapsed) => {
     disassembly.update(dt);
+    shiftCamera(-applied);
+    applied = 0;
     rig.update(dt);
     const a = disassembly.amount;
-    // Opening the movement pushes parts along the line of sight (towards the viewer, for the back side), and in
-    // perspective they would swell and pass the camera. So the camera backs off with the nearest part: it keeps
-    // the nearest corner at a fixed share of the closed-up viewing distance, and returns as the movement closes.
+    // The camera keeps the nearest corner at a fixed share of the closed-up viewing distance, and returns as the
+    // movement closes.
     if (a > 1e-4 || dolly > 1e-3) {
       partCorners(registry.all().map((p) => p.root), corners);
       const cam = stage.camera.position;
@@ -158,11 +319,11 @@ setTimeout(() => {
       viewDir.divideScalar(dist);
       let nearest = Infinity;
       for (const c of corners) nearest = Math.min(nearest, viewDir.dot(fromCam.subVectors(cam, c)));
-      const delta = Math.max(-dolly, MIN_DEPTH_SHARE * (dist - dolly) - nearest);
-      const step = delta * Math.min(1, dt * 6);
-      dolly += step;
-      cam.addScaledVector(viewDir, step);
+      const wanted = Math.max(0, MIN_DEPTH_SHARE * dist - nearest);
+      dolly += (wanted - dolly) * Math.min(1, dt * 6);
     }
+    shiftCamera(dolly);
+    applied = dolly;
     // Zoom: while parts are out it follows where their boxes really are on screen.
     const camKey = `${a}|${stage.camera.position.toArray().map((v) => v.toFixed(1))}|${stage.controls.target.toArray().map((v) => v.toFixed(1))}|${stage.camera.aspect}`;
     if (camKey !== fitKey) {
@@ -213,11 +374,22 @@ setTimeout(() => {
     lastAmount = a;
 
     ui.update(stage.fps);
+    winding.update(dt);
     sound.update();
+    // phones: the card sits over the model when the panel is tucked away; follow its size from step to step
+    if (window.innerWidth < 760 && !panel.open) {
+      const want = coach.visible ? Math.round(coach.el.getBoundingClientRect().height + 20) : 0;
+      if (Math.abs(want - bottomInset) > 2) syncInset();
+    }
+    // labels keep clear of the card
+    if (coach.visible) {
+      const r = coach.el.getBoundingClientRect();
+      labels.blockers = [{ x: r.left - 8, y: r.top - 8, w: r.width + 16, h: r.height + 16 }];
+    } else labels.blockers = [];
   });
   stage.onLateFrame(() => labels.update(stage.camera, disassembly.amount));
   stage.start();
   loading.classList.add('is-done');
 
-  if (import.meta.env.DEV) Object.assign(window, { __app: { stage, ref, watch, registry, disassembly, rig, selection, labels, ghost, ui, sound, probe, presets } });
+  if (import.meta.env.DEV) Object.assign(window, { __app: { stage, ref, watch, registry, disassembly, rig, selection, labels, ghost, ui, sound, probe, presets, winding, tour, quiz, url, coach, panel } });
 }, 50);
