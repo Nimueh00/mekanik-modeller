@@ -1,0 +1,388 @@
+html,
+body {
+  margin: 0;
+  height: 100%;
+  overflow: hidden;
+  background: #0a0806;
+  color: #e9e4da;
+  font-family: 'Inter', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+#app {
+  position: fixed;
+  inset: 0;
+  /* Warm exhibition backdrop: a soft pool of light behind the subject. */
+  background:
+    radial-gradient(ellipse 60% 55% at 40% 46%, rgba(92, 70, 42, 0.42), transparent 70%),
+    radial-gradient(ellipse 120% 90% at 40% 40%, #1d1711 0%, #0e0b08 55%, #050403 100%);
+}
+
+.stage-canvas {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  display: block;
+  outline: none;
+}
+
+.loading {
+  position: fixed;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  font-family: 'Cormorant Garamond', serif;
+  letter-spacing: 0.3em;
+  color: #c9a96a;
+  font-size: 18px;
+  pointer-events: none;
+  transition: opacity 0.6s;
+}
+.loading.is-done {
+  opacity: 0;
+}
+
+.title-block {
+  position: fixed;
+  left: 28px;
+  top: 22px;
+  pointer-events: none;
+  z-index: 5;
+}
+.title-block h1 {
+  margin: 0;
+  font-family: 'Cormorant Garamond', serif;
+  font-weight: 500;
+  font-size: 26px;
+  letter-spacing: 0.08em;
+  color: #eadfca;
+}
+.title-block p {
+  margin: 4px 0 0;
+  font-size: 12px;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: #8f8678;
+}
+
+/* crank gauge */
+.crank-gauge {
+  display: flex;
+  gap: 14px;
+  align-items: center;
+}
+.crank-dial {
+  flex: none;
+}
+.dial-ring {
+  fill: rgba(255, 255, 255, 0.02);
+  stroke: rgba(201, 169, 106, 0.35);
+  stroke-width: 1;
+}
+.dial-tick {
+  stroke: rgba(255, 255, 255, 0.22);
+  stroke-width: 1;
+}
+.dial-tick.major {
+  stroke: rgba(201, 169, 106, 0.8);
+  stroke-width: 1.4;
+}
+.dial-label {
+  fill: #9b958a;
+  font-size: 9px;
+  text-anchor: middle;
+  font-family: 'Inter', sans-serif;
+}
+.dial-needle {
+  stroke: #e2c483;
+  stroke-width: 2;
+  stroke-linecap: round;
+}
+.dial-hub {
+  fill: #e2c483;
+}
+.cyl-wrap {
+  flex: 1;
+  min-width: 0;
+}
+.cyl-bars {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 8px;
+}
+.cyl-bar {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+}
+.cyl-track {
+  position: relative;
+  width: 20px;
+  height: 70px;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-top-color: rgba(201, 169, 106, 0.6);
+  border-radius: 3px 3px 2px 2px;
+  background: linear-gradient(180deg, rgba(201, 169, 106, 0.08), rgba(255, 255, 255, 0.02));
+}
+.cyl-piston {
+  position: absolute;
+  left: 2px;
+  right: 2px;
+  height: 30%;
+  border-radius: 2px;
+  background: linear-gradient(180deg, #e8dcc2, #9c937f);
+}
+.cyl-name {
+  font-size: 11px;
+  color: #c9a96a;
+}
+.cyl-val {
+  font-size: 10px;
+  color: #9b958a;
+  font-variant-numeric: tabular-nums;
+}
+.cyl-caption {
+  margin-top: 6px;
+  text-align: center;
+  font-size: 10px;
+  color: #6f695f;
+}
+
+@media (max-width: 760px) {
+  .title-block {
+    left: 16px;
+    top: 14px;
+  }
+  .title-block h1 {
+    font-size: 19px;
+  }
+  .title-block p {
+    font-size: 10px;
+    letter-spacing: 0.14em;
+  }
+}
+
+/* labels */
+.lbl-layer {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 4;
+  overflow: hidden;
+  transition: opacity 0.25s;
+}
+.lbl-layer.is-off {
+  opacity: 0;
+}
+.lbl-svg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+.lbl-svg line {
+  stroke: rgba(214, 182, 118, 0.7);
+  stroke-width: 1;
+  opacity: 0;
+  transition: opacity 0.25s;
+}
+.lbl-svg circle {
+  fill: #e2c483;
+  stroke: rgba(10, 8, 6, 0.8);
+  stroke-width: 1.5;
+  opacity: 0;
+  transition: opacity 0.25s;
+}
+.lbl {
+  position: absolute;
+  left: 0;
+  top: 0;
+  appearance: none;
+  font: inherit;
+  font-size: 12.5px;
+  font-weight: 500;
+  white-space: nowrap;
+  padding: 4px 11px;
+  border-radius: 6px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: rgba(12, 10, 8, 0.82);
+  color: #f0e9da;
+  cursor: pointer;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.25s, border-color 0.2s, background 0.2s;
+}
+.lbl.is-visible {
+  opacity: 1;
+  pointer-events: auto;
+}
+.lbl:hover,
+.lbl.is-selected {
+  border-color: rgba(226, 196, 131, 0.85);
+  background: rgba(54, 40, 18, 0.9);
+}
+
+@media (max-width: 760px) {
+  .lbl {
+    font-size: 11px;
+    padding: 3px 8px;
+  }
+}
+
+/* ---------- Çevrim göstergesi ---------- */
+.cyc-cyl-grid .pnl-btn {
+  padding: 7px 2px;
+  font-size: 12px;
+}
+.cyc-strokes {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 4px;
+  margin: 10px 0 8px;
+}
+.cyc-stroke {
+  --stroke: #888;
+  text-align: center;
+  font-size: 11px;
+  letter-spacing: 0.02em;
+  padding: 6px 2px;
+  border-radius: 6px;
+  color: #9b958a;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-bottom: 2px solid color-mix(in srgb, var(--stroke) 45%, transparent);
+  transition: background 0.15s, color 0.15s, border-color 0.15s;
+}
+.cyc-stroke.is-active {
+  color: #fff6e4;
+  background: color-mix(in srgb, var(--stroke) 30%, transparent);
+  border-color: color-mix(in srgb, var(--stroke) 80%, transparent);
+  box-shadow: 0 0 14px color-mix(in srgb, var(--stroke) 35%, transparent);
+}
+.cyc-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.cyc-wheel {
+  flex: none;
+}
+.cyc-arc {
+  fill: none;
+  stroke-width: 7;
+  opacity: 0.85;
+}
+.cyc-ev {
+  fill: none;
+  stroke-width: 2;
+  stroke-linecap: round;
+}
+.cyc-ev-in {
+  stroke: rgba(91, 156, 240, 0.75);
+}
+.cyc-ev-ex {
+  stroke: rgba(196, 160, 120, 0.75);
+}
+.cyc-tdc {
+  stroke: rgba(255, 255, 255, 0.55);
+  stroke-width: 1.2;
+}
+.cyc-wlabel {
+  fill: #8f897e;
+  font-size: 8px;
+  text-anchor: middle;
+}
+.cyc-spark {
+  font-size: 10px;
+  text-anchor: middle;
+}
+.cyc-marker {
+  --stroke: #888;
+  cursor: pointer;
+}
+.cyc-marker circle {
+  fill: #1a1510;
+  stroke: var(--stroke);
+  stroke-width: 1.6;
+}
+.cyc-marker text {
+  fill: #e9e4da;
+  font-size: 9px;
+  font-weight: 600;
+  text-anchor: middle;
+  pointer-events: none;
+}
+.cyc-marker.is-focus circle {
+  fill: var(--stroke);
+  stroke: #fff6e4;
+  stroke-width: 2;
+}
+.cyc-marker.is-focus text {
+  fill: #120e09;
+}
+.cyc-side {
+  min-width: 0;
+}
+.cyc-big-label {
+  font-size: 10px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: #8f897e;
+}
+.cyc-big {
+  font-family: var(--pnl-serif);
+  font-size: 30px;
+  color: #f1e6cf;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.15;
+}
+.cyc-stroke-name {
+  font-size: 13px;
+  font-weight: 600;
+  margin-top: 2px;
+}
+.cyc-pv {
+  margin: 12px 0 8px;
+  border-radius: 8px;
+  background: rgba(0, 0, 0, 0.22);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  overflow: hidden;
+}
+.cyc-pv canvas {
+  display: block;
+  width: 100%;
+}
+
+/* watch panel: the "bir vuruş" button is only live while paused */
+.pnl-btn:disabled {
+  opacity: 0.38;
+  pointer-events: none;
+}
+
+/* "Kurma ve ayar" section */
+.crown-turn {
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
+}
+.pnl-readout-value.is-stopped {
+  color: #f0b27a;
+}
+.pnl-note.is-flash {
+  color: #f0c98d;
+}
+.pnl-meter {
+  height: 5px;
+  border-radius: 3px;
+  background: rgba(255, 255, 255, 0.08);
+  overflow: hidden;
+}
+.pnl-meter-fill {
+  display: block;
+  height: 100%;
+  width: 0;
+  border-radius: 3px;
+  background: linear-gradient(90deg, #8f6f35, #e2c483);
+}
