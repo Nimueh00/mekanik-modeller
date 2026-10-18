@@ -270,14 +270,19 @@ setTimeout(() => {
     },
   );
 
-  // Free area for the model: right of the panel (desktop) or above the bottom sheet / the guide card (phones).
-  let bottomInset = -1;
+  // Free area for the model: right of the panel (desktop) or above the bottom sheet (phones), and above the guide
+  // card while one is showing, so that the card never covers what it is talking about. On phones with the panel open
+  // the card sits at the top instead and takes nothing from the bottom.
+  let cardInset = 0;
+  const cardHeight = () => {
+    const narrow = window.innerWidth < 760;
+    return coach.visible && !(narrow && panel.open) ? Math.round(coach.el.getBoundingClientRect().height + 20) : 0;
+  };
   const syncInset = () => {
     const narrow = window.innerWidth < 760;
     coach.el.classList.toggle('is-top', panel.open && narrow);
-    const card = narrow && coach.visible && !panel.open ? coach.el.getBoundingClientRect().height + 20 : 0;
-    const bottom = Math.max(panel.occupiedHeight, card);
-    bottomInset = bottom;
+    cardInset = cardHeight();
+    const bottom = Math.max(panel.occupiedHeight, cardInset);
     stage.setInsets(panel.occupiedWidth, bottom);
     labels.maxVisible = narrow ? 4 : 99;
     labels.area = {
@@ -376,11 +381,8 @@ setTimeout(() => {
     ui.update(stage.fps);
     winding.update(dt);
     sound.update();
-    // phones: the card sits over the model when the panel is tucked away; follow its size from step to step
-    if (window.innerWidth < 760 && !panel.open) {
-      const want = coach.visible ? Math.round(coach.el.getBoundingClientRect().height + 20) : 0;
-      if (Math.abs(want - bottomInset) > 2) syncInset();
-    }
+    // the card changes size from step to step (and from question to question)
+    if (Math.abs(cardHeight() - cardInset) > 2) syncInset();
     // labels keep clear of the card
     if (coach.visible) {
       const r = coach.el.getBoundingClientRect();
