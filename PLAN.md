@@ -29,7 +29,7 @@ Durum: ⏳ bekliyor · 🔨 işçide · 🔁 revizyonda · 🔍 denetimde · ✅
 | P2 | Mekanizma geometrisi ve montaj: saat dişlisi profili, plaka ve köprüler, yürüyüş takımı, çıkış (çark, çatal, balans, spiral), akrep-yelkovan takımı, kadran ve ibreler; temel saat malzemeleri (pirinç, rodyum, yakut, mavi çelik); kinematiğe bağlama | Opus 5.5 | P1 | ✅ |
 | P3 | Kurma ve takvim: zemberek ve cırcır, kurma-ayar mekanizması (taç konumları, ibre ayarı, durdurma), otomatik rotor ve yön değiştirici, tarih mekanizması, rezerv bitince balansın sönümlenmesi, demontaj sırası düzeltmesi | Sonnet 5.5 | P2 | ✅ |
 | P4 | Arayüz: panel, zaman ölçeği, demontaj, hayalet görünüm, kamera ön ayarları, etiketler, parça seçimi, yüzey işlemeleri (perlaj, Cenevre çizgileri), tik-tak sesi, gölge performansı | Sonnet 5.5 | P2 | ✅ |
-| P5 | Öğrenme ve bitiş: taç/rotor kontrollerinin panele bağlanması, katalog/tur/sınav metinleri, tur, sınav, URL durumu, mobil, son denetim | Sonnet 5.5 | P3, P4 | 🔨 |
+| P5 | Öğrenme ve bitiş: taç/rotor kontrollerinin panele bağlanması, katalog/tur/sınav metinleri, tur, sınav, URL durumu, mobil, son denetim | Sonnet 5.5 | P3, P4 | ✅ |
 
 Not: Sahip isteğiyle 12 paket 6'ya indirildi (motor 5 fazda bitmişti). Eski P2+P3+P4 → P2; P5+P5b+P5c → P3; P6+P7 → P4; P8+P9 → P5.
 P3 ve P4 aynı dalda paralel: dosya ayrımı — P3 `watch.ts`, `catalog.ts`, `parts/`, `train.ts`, `watchClock.ts`; P4 `main.ts`, `materials.ts`, yeni `ui/` dosyaları. `main.ts`'te P3 yalnızca başlangıç zamanı satırını değiştirir.
@@ -71,3 +71,10 @@ P3 ve P4 aynı dalda paralel: dosya ayrımı — P3 `watch.ts`, `catalog.ts`, `p
 - `main.ts` artık `clock.pose`'u aktarıyor; gölge anahtarı pose alanlarını kapsıyor.
 - P3 test değişiklikleri: iki belgelenmiş köşe-kutusu istisnası (kayar/kurma pinyonu ↔ merkez çarkı; gerçek hatlar arası boşluk ölçülü). Kabul.
 - Arayüzde marka adı yok (K5). fps hâlâ gerçek GPU'da ölçülmedi.
+
+### P5 — KABUL (`27238ba`, `024f305`, `683310c`, `0de132a`)
+- `saat` typecheck + test (30 dosya / 285 test; eski test dosyaları değişmemiş) + build yeşil; `motor` 8 / 59; `core` farkı yalnızca `labels.ts` (K6); `watch/` altında yalnızca `catalog.ts` `info` alanları değişmiş.
+- Tarayıcıda sürülerek doğrulandı: taç 3 → "Saniye durduruldu", saat ilerlemiyor; taç 1 "Çevir ▸" rezervi 3,2 → 6,2 sa, "◂ Çevir" kurmuyor; bilek hareketi 60 s'de 2,0 → 3,1 sa; "Saati boşalt" + 1 sa/s rezervi tüketiyor; tur 7 adım (4. adım çıkış, 1/50 yavaş, doğru metin); sınav 10 soru, "modelde bul" tam açık demontajla; telefonda tur kartı modelin altında; konsol temiz.
+- Metinler saatçilik açısından denetlendi (Glucydur/berilyum bronzu, Ni-Fe spiral, mavileştirme ~300 °C, rulman kafes oranı, tüm sayılar `specs` ile tutarlı); marka adı yok.
+- Bilinen küçük kusur: masaüstünde tur kartı açıkken "Çıkış mekanizması" adımında model üst kenara itiliyor (başlık bloğuyla üst üste biniyor); çıkış bölgesi yine kadrajda. İsteğe bağlı rötuş.
+- Proje tamam. Açık: gerçek GPU'da fps ölçümü; `main`'e birleştirme (sahip kararı).
