@@ -61,8 +61,8 @@ export class WatchSound {
     if (!this._on || !this.ctx || this.ctx.state !== 'running') return;
     const clock = this.clock();
     const now = this.ctx.currentTime;
-    this.scheduler.update(now, { t: clock.t, paused: clock.paused || !clock.running, timeScale: clock.timeScale });
-    const hum = soundMode(clock.timeScale) === 'hum' && !clock.paused && clock.running;
+    this.scheduler.update(now, { t: clock.t, paused: clock.paused || !clock.moving, timeScale: clock.timeScale });
+    const hum = soundMode(clock.timeScale) === 'hum' && !clock.paused && clock.moving;
     const level = hum ? Math.min(0.1, 0.04 * (1 + Math.log10(clock.timeScale / 60))) * tickGain(clock.amplitude, FULL_AMPLITUDE) : 0;
     this.humGain.gain.setTargetAtTime(level, now, 0.12);
     this.humFilter.frequency.setTargetAtTime(1400 + 500 * Math.log10(Math.max(1, clock.timeScale / 60)), now, 0.2);

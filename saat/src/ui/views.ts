@@ -70,7 +70,7 @@ export interface ViewSpec {
 
 export const VIEW_SPECS: readonly ViewSpec[] = [
   { id: 'back', label: 'Arka genel', title: 'Köprü tarafından bütün mekanizma', axes: ['centre'], y: BRIDGE_Y, pad: 3, azimuth: 20, elevation: 14, side: 1, minRadius: 13 },
-  { id: 'escapement', label: 'Çıkış mekanizması', title: 'Balans, çatal ve çıkış çarkı yakından', axes: ['balance', 'pallet', 'escape'], y: BRIDGE_Y, pad: 8, azimuth: 16, elevation: 24, side: 1 },
+  { id: 'escapement', label: 'Çıkış mekanizması', title: 'Balans, çatal ve çıkış çarkı yakından', axes: ['balance', 'pallet', 'escape'], y: BRIDGE_Y, pad: 9.5, azimuth: 16, elevation: 24, side: 1 },
   { id: 'train', label: 'Dişli takımı', title: 'Zemberek kutusundan çıkış çarkına dişli takımı (köprüler saydamlaşır)', axes: ['barrel', 'centre', 'third', 'escape'], y: -2.2, pad: 6.5, azimuth: 0, elevation: 18, side: 1 },
   { id: 'dial', label: 'Kadran tarafı', title: 'Saatin yüzü: kadran ve ibreler', axes: ['centre'], y: MOVEMENT.envelope.dialSide[1], pad: 3, azimuth: -14, elevation: 12, side: -1, minRadius: 13 },
   { id: 'profile', label: 'Profil', title: 'Yandan bakış: katmanların kalınlığı', axes: ['centre'], y: MID_Y, pad: 2, azimuth: 90, elevation: 4, side: 1, minRadius: 13, tight: 0.9 },
@@ -109,6 +109,7 @@ interface LabelSpec {
 }
 
 const LABEL_SPECS: readonly LabelSpec[] = [
+  { partId: 'rotor', text: 'Otomatik rotor', priority: 0 },
   { partId: 'balance', text: 'Balans', priority: 1 },
   { partId: 'hairspring', text: 'Spiral yay', priority: 2 },
   { partId: 'lever', text: 'Çatal', priority: 3 },

@@ -1,4 +1,4 @@
-import { Box3, type Camera, Vector3 } from 'three';
+import { Box3, type Camera, type Object3D, Vector3 } from 'three';
 import type { PartRegistry } from './registry';
 
 export interface LabelDef {
@@ -39,6 +39,26 @@ interface Entry {
 const NS = 'http://www.w3.org/2000/svg';
 
 /**
+ * World-space displacement of a part's root node. The root's `position` is
+ * expressed in its parent's frame, so when the parent is rotated or scaled
+ * (a movement stood on its edge) only the parent's rotation and scale — not
+ * its translation — carry it to the world. With an unrotated, unscaled
+ * parent the result is the position itself, bit for bit. The parent's world
+ * matrix must be up to date.
+ */
+export function worldOffset(node: Object3D, out: Vector3): Vector3 {
+  const { x, y, z } = node.position;
+  const p = node.parent;
+  if (!p) return out.set(x, y, z);
+  const e = p.matrixWorld.elements;
+  return out.set(
+    e[0]! * x + e[4]! * y + e[8]! * z,
+    e[1]! * x + e[5]! * y + e[9]! * z,
+    e[2]! * x + e[6]! * y + e[10]! * z,
+  );
+}
+
+/**
  * Leader-line labels drawn in a DOM/SVG overlay above the canvas
  * (equivalent to a CSS2DRenderer, with a collision pass added).
  * Anchors are stored in assembled world space and follow the part's explode
@@ -51,6 +71,7 @@ export class LabelSystem {
   private svg = document.createElementNS(NS, 'svg');
   private v = new Vector3();
   private anchor = new Vector3();
+  private off = new Vector3();
   enabled = true;
   /** Cap on simultaneously visible labels (lower on small screens). */
   maxVisible = 99;
@@ -154,17 +175,18 @@ export class LabelSystem {
     const A = this.area;
     const midX = (A.left + A.right) / 2;
 
+    this.registry.root.updateWorldMatrix(true, false);
     // refresh a few cached line-of-sight results each frame (round-robin)
     if (this.occlusion && this.entries.length) {
       for (let k = 0; k < this.occlusionBudget; k++) {
         const e = this.entries[(this.rr = (this.rr + 1) % this.entries.length)]!;
-        if (e.seen !== null) e.seen = this.occlusion(e.def.partId, this.anchor.copy(e.rest).add(this.registry.get(e.def.partId).root.position));
+        if (e.seen !== null) e.seen = this.occlusion(e.def.partId, this.anchor.copy(e.rest).add(worldOffset(this.registry.get(e.def.partId).root, this.off)));
       }
     }
 
     for (const e of this.entries) {
       const node = this.registry.get(e.def.partId);
-      this.anchor.copy(e.rest).add(node.root.position);
+      this.anchor.copy(e.rest).add(worldOffset(node.root, this.off));
       let ok =
         placed.length < budget &&
         node.root.visible &&

@@ -12,11 +12,16 @@ const el = <K extends keyof HTMLElementTagNameMap>(tag: K, cls: string, text?: s
   return e;
 };
 
+export interface OpenUiApi {
+  /** Switch a layer on or off the way its chip does (keeps the chip and the selection in step). */
+  setLayerVisible(id: string, on: boolean): void;
+}
+
 /** Panel sections for disassembly, viewpoints, layers, labels and part info. Layers come from the registry. */
 export function buildOpenUi(
   panel: Panel,
   o: { disassembly: Disassembly; rig: CameraRig; registry: PartRegistry; labels: LabelSystem; selection: Selection; presets: CameraPreset[] },
-): void {
+): OpenUiApi {
   const { disassembly, rig, registry, labels, selection, presets } = o;
 
   // ---------- Demontaj ----------
@@ -75,13 +80,14 @@ export function buildOpenUi(
 
   // ---------- Katmanlar ----------
   const layers = panel.section('Katmanlar');
-  layers.chips(
+  const applyLayer = (id: string, on: boolean) => {
+    registry.setLayerVisible(id, on);
+    const sel = selection.selected;
+    if (sel && sel.def.group === id && !on) selection.select(null);
+  };
+  const chips = layers.chips(
     registry.populatedLayers().map((l) => ({ id: l.id, label: l.shortTr ?? l.nameTr, title: l.nameTr })),
-    (id, on) => {
-      registry.setLayerVisible(id, on);
-      const sel = selection.selected;
-      if (sel && sel.def.group === id && !on) selection.select(null);
-    },
+    applyLayer,
   );
   const labelGrid = layers.buttons<'labels'>([{ id: 'labels', label: 'Etiketler: açık', span: 1 }], {
     columns: 1,
@@ -122,4 +128,11 @@ export function buildOpenUi(
     if (p) info.scrollIntoView();
   });
   labels.onPick = (id) => selection.select(id);
+
+  return {
+    setLayerVisible(id, on) {
+      applyLayer(id, on);
+      chips.set(id, on);
+    },
+  };
 }

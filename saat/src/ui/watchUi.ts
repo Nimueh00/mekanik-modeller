@@ -2,7 +2,7 @@ import type { Panel } from '../core/ui/panel';
 import { BEATS_PER_SECOND, MOVEMENT } from '../watch/specs';
 import { TIME_SCALES, WatchClock } from '../watch/watchClock';
 import type { GhostView, WatchView } from './ghost';
-import { formatAmplitude, formatDialTime, formatReserve, secondsOnDial } from './format';
+import { formatAmplitude, formatDialTime, formatReserve } from './format';
 import { SPEED_OPTIONS, speedIndex } from './speeds';
 import type { WatchSound } from './sound';
 
@@ -26,7 +26,7 @@ export interface WatchUiApi {
 
 /** A clock showing the wall-clock time of `now`, keeping speed, pause and the wind of `from`. */
 export function clockAt(from: WatchClock, now: Date): WatchClock {
-  const c = new WatchClock({ t: secondsOnDial(now), timeScale: from.timeScale, windTurns: from.windTurns });
+  const c = WatchClock.fromDate(now, { timeScale: from.timeScale, windTurns: from.windTurns });
   c.paused = from.paused;
   return c;
 }
@@ -126,8 +126,8 @@ export function buildWatchUi(panel: Panel, ref: ClockRef, o: WatchUiHooks): Watc
 
   const update = (fps: number) => {
     const c = ref.clock;
-    reading.set(formatDialTime(c.t));
-    amplitude.set(formatAmplitude(c.amplitude));
+    reading.set(formatDialTime(c.t + c.handOffset)); // the hands, which the crown can set ahead of the movement
+    amplitude.set(formatAmplitude(c.balanceAmplitude));
     reserve.set(c.running ? formatReserve(c.windTurns) : 'bitti');
     stepButton.disabled = !c.paused;
     footer.textContent = `Ø ${MOVEMENT.diameter.toLocaleString('tr-TR')} mm · ${Math.round(fps)} fps`;
