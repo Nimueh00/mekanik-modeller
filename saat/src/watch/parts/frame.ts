@@ -1,6 +1,8 @@
 import type { BufferGeometry } from 'three';
-import type { P2 } from '../../core/geometry/profile';
-import { AXES, type AxisName, DATE, MOTION_WORKS, MOVEMENT, PLATE_RADIUS, SCENE_PER_MM, towardsClock, WIND_AXES } from '../specs';
+import { convexHull, type P2 } from '../../core/geometry/profile';
+import { SLIDING_GROOVE_X } from '../keyless';
+import { tipZ } from './keyless';
+import { AXES, type AxisName, DATE, KEYLESS, MOTION_WORKS, MOVEMENT, PLATE_RADIUS, SCENE_PER_MM, towardsClock, WIND_AXES } from '../specs';
 import { bankingPins, studGeometry } from './escapement';
 import { circle, cylinderY, jewel, merge, screwHead, slab, smoothClosed, strokeOutline, toScene } from './common';
 
@@ -178,6 +180,11 @@ export function buildPlate(): FrameGeometry {
   hole(at('barrel'), 0.32);
   for (const a of ['third', 'escape', 'pallet', 'balance'] as const) hole(at(a), 0.12);
   hole(WIND_AXES.intermediate, 0.2); // the axle of the intermediate setting wheel runs through the plate
+  // slot for the yoke's pins (they follow the sliding pinion's groove) and a hole for the setting lever's pin
+  const slot = (a: P2, b: P2, r: number) =>
+    convexHull([...circle(r, a, 20), ...circle(r, b, 20)]).reverse();
+  holes.push(slot([SLIDING_GROOVE_X - 0.15, KEYLESS.stemZ], [SLIDING_GROOVE_X + KEYLESS.pull[2] + 0.15, KEYLESS.stemZ], 0.22));
+  hole([KEYLESS.leverTipX, tipZ()], 0.28);
   const disc = slab(circle(PLATE_RADIUS, [0, 0], 256), holes, PLATE_BACK, PLATE_DIAL, 0.06);
   const body: BufferGeometry[] = [disc];
   const ruby: BufferGeometry[] = [];

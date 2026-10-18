@@ -123,14 +123,22 @@ function newShapes(pull: number): Shape[] {
   S.push(onStem('slidingTail', 'sliding', x0 + 1.4, x0 + 1.9, 0.3, [KEYLESS.stemY - 0.3, KEYLESS.stemY + 0.3]));
   const gv = yokeGroove(pull);
   const groove: P2 = [KEYLESS.yokePivot[0] + gv[0], KEYLESS.yokePivot[1] + gv[1]];
-  const yokeY: Y = [KEYLESS.stemY - 0.12, KEYLESS.stemY + 0.12];
-  S.push(...along('yoke', 'yoke', KEYLESS.yokePivot, groove, 0.22, yokeY));
-  S.push({ name: 'yokeStud', body: 'yoke', at: KEYLESS.yokePivot, r: 0.25, y: [yokeY[0], PLATE_BACK] });
-  S.push({ name: 'yokeFork', body: 'yoke', at: groove, r: 0.35, y: yokeY });
+  const dialY: Y = [KEYLESS.dialLeverY[0], KEYLESS.dialLeverY[1]];
+  // yoke and lever are pressed plates on the dial side; their pins go down through the plate to the stem
+  S.push(...along('yoke', 'yoke', KEYLESS.yokePivot, groove, 0.22, dialY));
+  S.push({ name: 'yokeStud', body: 'yoke', at: KEYLESS.yokePivot, r: 0.3, y: [PLATE_DIAL, dialY[1] + 0.05] });
+  for (const dx of [-0.1, 0.1]) {
+    S.push({ name: 'yokePin', body: 'yoke', at: [groove[0] + dx, groove[1]], r: 0.05, y: [KEYLESS.stemY + KEYLESS.stemRadius - 0.01, dialY[1]] });
+  }
   const leverTip: P2 = [KEYLESS.leverTipX, KEYLESS.stemZ - KEYLESS.stemRadius * 0.65 - 0.06];
-  S.push(...along('lever', 'lever', KEYLESS.leverPivot, leverTip, 0.3, yokeY));
-  S.push({ name: 'leverStud', body: 'lever', at: KEYLESS.leverPivot, r: 0.3, y: [yokeY[0], PLATE_BACK] });
-  S.push(...along('leverTail', 'lever', KEYLESS.leverPivot, [KEYLESS.leverPivot[0] - 1.5, KEYLESS.leverPivot[1] - 0.6], 0.3, yokeY));
+  S.push(...along('lever', 'lever', KEYLESS.leverPivot, leverTip, 0.3, dialY));
+  S.push({ name: 'leverStud', body: 'lever', at: KEYLESS.leverPivot, r: 0.3, y: [PLATE_DIAL, dialY[1] + 0.05] });
+  S.push({ name: 'leverPin', body: 'lever', at: leverTip, r: 0.08, y: [KEYLESS.stemY + KEYLESS.stemRadius - 0.1, dialY[1]] });
+  S.push(...along('leverTail', 'lever', KEYLESS.leverPivot, [KEYLESS.leverPivot[0] - 1.4, KEYLESS.leverPivot[1] + 0.6], 0.3, dialY));
+  const ys = KEYLESS.yokeSpringPost;
+  S.push(...along('yokeSpring', 'yokeSpring', ys, [ys[0] + 0.95, ys[1] + 1.9], 0.2, dialY));
+  const ls = KEYLESS.leverSpringPost;
+  S.push(...along('leverSpring', 'leverSpring', ls, [ls[0] - 0.75, ls[1] - 1.0], 0.2, dialY));
   const rI = pitchRadius(KEYLESS.settingContrate) + KEYLESS.contrateWidth.intermediate / 2;
   S.push({ name: 'intermediateContrate', body: 'intermediate', at: WIND_AXES.intermediate, r: rI, y: KEYLESS.contrateY });
   S.push({ name: 'intermediateAxle', body: 'intermediate', at: WIND_AXES.intermediate, r: 0.2, y: [KEYLESS.contrateY[0], KEYLESS.settingGear.y[1]] });
@@ -185,7 +193,9 @@ const MEETING: readonly (readonly [string, string])[] = [
   ['sliding', 'yoke'], // the fork rides in the groove
   ['stem', 'yoke'], // the fork straddles the stem at the groove
   ['sliding', 'intermediate'], // leaf section meets the intermediate's contrate (positions 2, 3)
-  ['stem', 'lever'], // the lever's tip rests in a notch
+  ['stem', 'lever'], // the lever's pin rests in a notch
+  ['yoke', 'yokeSpring'],
+  ['lever', 'leverSpring'],
   ['intermediate', 'settingWheelTime'],
   ['intermediate', 'settingWheelDate'],
   ['intermediate', 'settingWheelNeutral'],

@@ -438,6 +438,11 @@ export const KEYLESS = {
   yokePivot: [5.5, -4.7] as readonly [number, number],
   leverPivot: [10.9, -5.0] as readonly [number, number],
   leverTipX: 10.0,
+  /** The yoke and the setting lever are pressed steel plates on the dial side, between plate and dial; their pins reach down through the plate to the stem. */
+  dialLeverY: [0.03, 0.15] as const,
+  /** Posts of the springs that load them (plan, mm). */
+  yokeSpringPost: [4.3, -5.6] as readonly [number, number],
+  leverSpringPost: [11.5, -3.3] as readonly [number, number],
   /** Crown outside the plate: x of the crown's inner face when the stem is pushed in, and its size. */
   crown: { x: 13.4, length: 2.0, radius: 1.5 },
 } as const;

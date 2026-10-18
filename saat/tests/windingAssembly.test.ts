@@ -30,7 +30,9 @@ const NEW_PARTS = [
   'sliding-pinion',
   'winding-pinion',
   'yoke',
+  'yoke-spring',
   'setting-lever',
+  'setting-lever-spring',
   'intermediate-contrate',
   'intermediate-gear',
   'setting-wheel',
@@ -76,9 +78,16 @@ describe('P3 assembly', () => {
     const back = ['rotor', 'winding', 'keyless', 'barrel', 'centre'];
     const dial = ['date', 'keyless-dial'];
     for (const p of registry.all()) {
-      if (p.def.id === 'winding-stem') continue;
+      if (p.def.id === 'winding-stem' || p.def.id === 'intermediate-contrate') continue; // sideways; back-side part in a dial-side layer
       if (back.includes(p.def.group)) expect(p.def.explodeOffset[1], p.def.id).toBeLessThan(0);
       if (dial.includes(p.def.group)) expect(p.def.explodeOffset[1], p.def.id).toBeGreaterThan(0);
+    }
+    // the contrate wheel is pressed on the intermediate's axle from the back: it leaves towards −Y before the gear lifts out
+    expect(PARTS.intermediateContrate.explodeOffset[1]).toBeLessThan(0);
+    // the setting lever, the yoke and their springs are on the dial side
+    for (const id of ['setting-lever', 'yoke', 'setting-lever-spring', 'yoke-spring']) {
+      expect(registry.get(id).def.group, id).toBe('keyless-dial');
+      expect(registry.get(id).def.explodeOffset[1], id).toBeGreaterThan(0);
     }
     expect(PARTS.windingStem.explodeOffset[0]).toBeGreaterThan(100); // out along +X, the way the crown points
     expect(PARTS.windingStem.explodeOffset[1]).toBe(0);

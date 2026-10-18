@@ -29,9 +29,11 @@ import {
   buildSettingLever,
   buildSettingWheel,
   buildSlidingPinion,
+  buildLeverSpring,
   buildStem,
   buildWindingPinion,
   buildYoke,
+  buildYokeSpring,
 } from './parts/keyless';
 import {
   type BodyGeometry,
@@ -211,6 +213,8 @@ export class Watch {
     const winding = this.simple('windingPinion', PARTS.windingPinion, WIND_AXES.windingPinion, [mesh(buildWindingPinion(), steel)]);
     winding.motion.position.y = KEYLESS.stemY * S;
     this.simple('yoke', PARTS.yoke, KEYLESS.yokePivot, [mesh(buildYoke(), steel)]);
+    this.simple('yokeSpring', PARTS.yokeSpring, [0, 0], [mesh(buildYokeSpring(), M('blueSteel'))]);
+    this.simple('settingLeverSpring', PARTS.settingLeverSpring, [0, 0], [mesh(buildLeverSpring(), M('blueSteel'))]);
     this.simple('settingLever', PARTS.settingLever, KEYLESS.leverPivot, [mesh(buildSettingLever(), steel)]);
 
     const inter = buildIntermediate();

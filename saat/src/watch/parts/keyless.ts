@@ -17,8 +17,6 @@ import { windGearGeometry } from './gears';
  */
 
 const Z = KEYLESS.stemZ;
-const Y = KEYLESS.stemY;
-const PLATE_BACK = MOVEMENT.plate.y[0];
 const PLATE_DIAL = MOVEMENT.plate.y[1];
 const X_WINDING = WIND_AXES.windingPinion[0];
 
@@ -112,12 +110,12 @@ export function buildSlidingPinion(): SlidingPinionGeometry {
     [0.52, x0 + 0.05],
     [0.34, x0 + 0.05],
     [0.34, x0 + 0.8],
-    [0.19, x0 + 0.8],
-    [0.19, x0 + 1.5],
-    [0.3, x0 + 1.5],
-    [0.3, x0 + 1.55],
-    [0.2, x0 + 1.55],
-    [0.2, x0 + 1.9],
+    [0.3, x0 + 0.8],
+    [0.3, x0 + 1.35],
+    [0.2, x0 + 1.35], // the groove the yoke's pins sit in
+    [0.2, x0 + 1.65],
+    [0.3, x0 + 1.65],
+    [0.3, x0 + 1.9],
     [0.18, x0 + 1.9],
     [0.18, x0],
   ];
@@ -139,57 +137,126 @@ export function buildWindingPinion(): BufferGeometry {
   return toScene(merge([leaves, collar, ...teeth]));
 }
 
-/** Plan-frame geometry of a lever drawn from its stud: outline in absolute plan coordinates (mm), y band given. */
-function leverSlab(path: P2[], widths: number[], y0: number, y1: number): BufferGeometry {
-  return slab(strokeOutline(path, widths, 10), [], y0, y1, 0.01);
+const [DY0, DY1] = KEYLESS.dialLeverY;
+const CHAMFER = -0.07;
+
+/** A pressed-steel outline: corners chamfered (negative radius) or rounded, as a stamping with a die break. */
+function stamping(pts: P2[], round: number[]): P2[] {
+  return roundCorners(pts, round, true, 3);
 }
 
-const KEYLESS_Y: readonly [number, number] = [Y - 0.12, Y + 0.12];
+/**
+ * A pressed lever plate between DY0 and DY1: the outline, its holes, a bevelled
+ * edge, and a screw head with a slot over the stud hole (origin = the stud).
+ */
+function pressedPlate(outline: P2[], holes: P2[][]): BufferGeometry[] {
+  const plate = slab(outline, holes, DY0, DY1, 0.012);
+  const head = cylinderY(0.3, DY1 - 0.005, DY1 + 0.05, 24);
+  const slot = box(0.5, 0.03, 0.09, [0, DY1 + 0.05, 0]);
+  const stud = cylinderY(0.13, 0, DY1, 16);
+  return [plate, head, slot, stud];
+}
 
-/** The yoke (sürgü): a lever on a stud whose fork rides in the sliding pinion's groove. Built in the frame of its stud. */
+/** Rotate a point about the origin by `a` radians in the plan numbers. */
+const turnBy = (p: P2, a: number): P2 => [p[0] * Math.cos(a) - p[1] * Math.sin(a), p[0] * Math.sin(a) + p[1] * Math.cos(a)];
+
+/**
+ * The yoke (sürgü): a pressed-steel plate on the dial side, pivoting on a stud
+ * in the plate. Its arm reaches over the stem line; two pins at its end go down
+ * through the slot in the plate and sit either side of the groove of the sliding
+ * pinion. Built in the frame of its stud.
+ */
 export function buildYoke(): BufferGeometry {
   const v = yokeRestVector(); // stud → groove, mm
-  const tipDir: P2 = [v[0], v[1]];
-  const len = Math.hypot(tipDir[0], tipDir[1]);
-  const u: P2 = [tipDir[0] / len, tipDir[1] / len];
-  const n: P2 = [-u[1], u[0]];
-  const arm = leverSlab(
-    [
-      [-u[0] * 0.8, -u[1] * 0.8],
-      [u[0] * len * 0.5, u[1] * len * 0.5],
-      [u[0] * (len - 0.2), u[1] * (len - 0.2)],
-    ],
-    [0.9, 0.55, 0.3],
-    KEYLESS_Y[0],
-    KEYLESS_Y[1],
-  );
-  // fork prongs straddling the groove
-  const prongs = [-1, 1].map((sgn) => {
-    const c: P2 = [u[0] * len + n[0] * sgn * 0.27, u[1] * len + n[1] * sgn * 0.27];
-    return cylinderY(0.1, KEYLESS_Y[0], KEYLESS_Y[1], 14, c);
-  });
-  const stud = cylinderY(0.22, PLATE_BACK + 0.05, KEYLESS_Y[1] + 0.05, 18);
-  return toScene(merge([arm, ...prongs, stud]));
+  const len = Math.hypot(v[0], v[1]);
+  const ang = Math.atan2(v[1], v[0]);
+  // outline along the arm (s) and across it (t), then turned onto the arm
+  const local: P2[] = [
+    [-0.75, -0.3],
+    [-0.5, -0.62],
+    [0.1, -0.7],
+    [0.7, -0.5],
+    [len * 0.6, -0.3],
+    [len - 0.2, -0.2],
+    [len + 0.22, -0.16],
+    [len + 0.22, 0.16],
+    [len - 0.2, 0.2],
+    [len * 0.6, 0.3],
+    [0.7, 0.5],
+    [0.2, 0.8], // tail the spring presses on
+    [-0.45, 0.78],
+    [-0.75, 0.3],
+  ];
+  const outline = stamping(local.map((p) => turnBy(p, ang)), [CHAMFER, 0.1, 0.1, 0, 0, CHAMFER, CHAMFER, CHAMFER, CHAMFER, 0, 0, CHAMFER, 0.1, CHAMFER]);
+  const holes: P2[][] = [
+    circle(0.14, [0, 0], 24).reverse(),
+    circle(0.1, turnBy([len * 0.32, 0], ang), 16).reverse(),
+    circle(0.1, turnBy([len * 0.5, 0], ang), 16).reverse(),
+  ];
+  const parts = pressedPlate(outline, holes);
+  const x = KEYLESS.stemY + KEYLESS.stemRadius - 0.01;
+  for (const dx of [-0.1, 0.1]) {
+    parts.push(cylinderY(0.05, x, DY0 + 0.02, 14, [v[0] + dx, v[1]]));
+  }
+  return toScene(merge(parts));
 }
 
-/** The setting lever (ayar kolu): detent lever that rests in the stem's notches; built in the frame of its stud. */
+/**
+ * The setting lever (ayar kolu): a pressed-steel detent lever on the dial side;
+ * its pin goes down through a hole in the plate and rests in the stem's notches.
+ * Built in the frame of its stud.
+ */
 export function buildSettingLever(): BufferGeometry {
-  const stud: P2 = [KEYLESS.leverPivot[0], KEYLESS.leverPivot[1]];
-  const tip: P2 = [KEYLESS.leverTipX, Z - KEYLESS.stemRadius * 0.65 - 0.06];
-  const d: P2 = [tip[0] - stud[0], tip[1] - stud[1]];
-  const arm = leverSlab(
-    [
-      [0.4, 0.25],
-      [d[0] * 0.5 + 0.4, d[1] * 0.5],
-      [d[0], d[1]],
-    ],
-    [0.9, 0.5, 0.26],
-    KEYLESS_Y[0],
-    KEYLESS_Y[1],
-  );
-  const tail = leverSlab([[0, 0], [-0.8, -0.5], [-1.5, -0.6]], [0.8, 0.4, 0.3], KEYLESS_Y[0], KEYLESS_Y[1]);
-  const post = cylinderY(0.25, PLATE_BACK + 0.05, KEYLESS_Y[1] + 0.05, 18);
-  return toScene(merge([arm, tail, post]));
+  const tip: P2 = [KEYLESS.leverTipX - KEYLESS.leverPivot[0], tipZ() - KEYLESS.leverPivot[1]];
+  const len = Math.hypot(tip[0], tip[1]);
+  const ang = Math.atan2(tip[1], tip[0]);
+  const local: P2[] = [
+    [-0.55, -0.35],
+    [-0.2, -0.65],
+    [0.5, -0.55],
+    [len * 0.55, -0.3],
+    [len - 0.1, -0.2],
+    [len + 0.2, 0],
+    [len - 0.1, 0.2],
+    [len * 0.55, 0.3],
+    [0.5, 0.45],
+    [-0.1, 0.5],
+    [-0.9, 0.9], // spring tail
+    [-1.4, 0.6],
+    [-0.8, 0.1],
+  ];
+  const outline = stamping(local.map((p) => turnBy(p, ang)), [CHAMFER, 0.12, 0.1, 0, CHAMFER, 0.04, CHAMFER, 0, 0.1, 0, CHAMFER, CHAMFER, 0.06]);
+  const holes: P2[][] = [circle(0.14, [0, 0], 24).reverse(), circle(0.11, turnBy([len * 0.4, 0], ang), 16).reverse()];
+  const parts = pressedPlate(outline, holes);
+  parts.push(cylinderY(0.08, KEYLESS.stemY + KEYLESS.stemRadius - 0.1, DY0 + 0.02, 14, tip));
+  return toScene(merge(parts));
+}
+
+/** y of the setting lever's tip: just on the 12 o'clock side of the stem axis. */
+export function tipZ(): number {
+  return Z - KEYLESS.stemRadius * 0.65 - 0.06;
+}
+
+/** A leaf spring on the dial side: a thin blade from a post to where it presses on its lever, in the movement frame. */
+function leafSpring(path: P2[]): BufferGeometry {
+  const y0 = DY0 + 0.04;
+  const y1 = DY1 - 0.04;
+  const blade = slab(strokeOutline(path, [0.14, 0.1, 0.07], 8), [], y0, y1);
+  const post = cylinderY(0.22, 0, y1 + 0.03, 20, path[0]!);
+  const screw = cylinderY(0.3, y1, y1 + 0.06, 20, path[0]!);
+  return toScene(merge([blade, post, screw]));
+}
+
+/** Yoke spring: from a post in the plate to the yoke's arm. */
+export function buildYokeSpring(): BufferGeometry {
+  const [px, pz] = KEYLESS.yokeSpringPost;
+  return leafSpring([[px, pz], [px + 0.2, pz + 1.3], [px + 0.95, pz + 1.9]]);
+}
+
+/** Setting lever spring: from a post in the plate to the lever's arm. */
+export function buildLeverSpring(): BufferGeometry {
+  const [px, pz] = KEYLESS.leverSpringPost;
+  return leafSpring([[px, pz], [px - 0.3, pz - 0.7], [px - 0.75, pz - 1.0]]);
 }
 
 export interface IntermediateGeometry {
@@ -216,7 +283,7 @@ export function buildIntermediate(): IntermediateGeometry {
   const hub = tubeY(0.15, 0.32, bodyTop, cy1, 20);
   const g1 = KEYLESS.settingGear.y[1];
   const axle = cylinderY(0.15, cy1 - 0.12, g1 + 0.03, 20);
-  const collar = cylinderY(0.3, PLATE_DIAL, PLATE_DIAL + 0.08, 20);
+  const collar = cylinderY(0.25, PLATE_DIAL, PLATE_DIAL + 0.08, 20);
   return {
     contrate: toScene(merge([body, ...teeth, hub])),
     gear: windGearGeometry('settingGear', undefined, 0.15),
