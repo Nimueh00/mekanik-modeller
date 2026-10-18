@@ -27,9 +27,9 @@ Durum: ⏳ bekliyor · 🔨 işçide · 🔁 revizyonda · 🔍 denetimde · ✅
 | P0 | İskelet: `saat/` projesi, `core` kopyası, yer tutucu sahne, duman testi | DeepSeek v4.1 flash | — | ✅ |
 | P1 | Şartname + kinematik çekirdek: diş sayıları, oranlar, yerleşim, 3 Hz vuruş, merkez saniye, zaman modeli, 80 sa rezerv, testler | Opus 5.5 | P0 | ✅ |
 | P2 | Mekanizma geometrisi ve montaj: saat dişlisi profili, plaka ve köprüler, yürüyüş takımı, çıkış (çark, çatal, balans, spiral), akrep-yelkovan takımı, kadran ve ibreler; temel saat malzemeleri (pirinç, rodyum, yakut, mavi çelik); kinematiğe bağlama | Opus 5.5 | P1 | ✅ |
-| P3 | Kurma ve takvim: zemberek ve cırcır, kurma-ayar mekanizması (taç konumları, ibre ayarı, durdurma), otomatik rotor ve yön değiştirici, tarih mekanizması, rezerv bitince balansın sönümlenmesi, demontaj sırası düzeltmesi | Sonnet 5.5 | P2 | 🔁 revizyon |
-| P4 | Arayüz: panel, zaman ölçeği, demontaj, hayalet görünüm, kamera ön ayarları, etiketler, parça seçimi, yüzey işlemeleri (perlaj, Cenevre çizgileri), tik-tak sesi, gölge performansı | Sonnet 5.5 | P2 | 🔁 revizyon |
-| P5 | Öğrenme ve bitiş: taç/rotor kontrollerinin panele bağlanması, katalog/tur/sınav metinleri, tur, sınav, URL durumu, mobil, son denetim | Sonnet 5.5 | P3, P4 | ⏳ |
+| P3 | Kurma ve takvim: zemberek ve cırcır, kurma-ayar mekanizması (taç konumları, ibre ayarı, durdurma), otomatik rotor ve yön değiştirici, tarih mekanizması, rezerv bitince balansın sönümlenmesi, demontaj sırası düzeltmesi | Sonnet 5.5 | P2 | ✅ |
+| P4 | Arayüz: panel, zaman ölçeği, demontaj, hayalet görünüm, kamera ön ayarları, etiketler, parça seçimi, yüzey işlemeleri (perlaj, Cenevre çizgileri), tik-tak sesi, gölge performansı | Sonnet 5.5 | P2 | ✅ |
+| P5 | Öğrenme ve bitiş: taç/rotor kontrollerinin panele bağlanması, katalog/tur/sınav metinleri, tur, sınav, URL durumu, mobil, son denetim | Sonnet 5.5 | P3, P4 | 🔨 |
 
 Not: Sahip isteğiyle 12 paket 6'ya indirildi (motor 5 fazda bitmişti). Eski P2+P3+P4 → P2; P5+P5b+P5c → P3; P6+P7 → P4; P8+P9 → P5.
 P3 ve P4 aynı dalda paralel: dosya ayrımı — P3 `watch.ts`, `catalog.ts`, `parts/`, `train.ts`, `watchClock.ts`; P4 `main.ts`, `materials.ts`, yeni `ui/` dosyaları. `main.ts`'te P3 yalnızca başlangıç zamanı satırını değiştirir.
@@ -64,3 +64,10 @@ P3 ve P4 aynı dalda paralel: dosya ayrımı — P3 `watch.ts`, `catalog.ts`, `p
 - P3 revizyon: ayar kolu ve sürgü arka yüzde, kaba düz şekiller; ETA mimarisine uygun olarak kadran tarafına taşınmalı.
 - P4 revizyon: (1) etiketler döndürülmüş kökte demontajı izlemiyor (K6); (2) iç görünüm ön ayarlarında rotor görüşü kapatıyor; (3) demontajda parçalar kadrajdan/panelin altına taşıyor; (4) `main.ts` `clock.pose`'u `watch.update`'e aktarmıyor (rotor, taç, ibre ayarı, rezerv sonu uygulamada devre dışı).
 - fps hâlâ gerçek GPU'da ölçülmedi; sahibin yerel ölçümü bekleniyor.
+
+### P3 + P4 revizyonları — KABUL (`cec6042`, `848e343`)
+- `saat` typecheck + test (25 dosya / 211 test) + build yeşil; `motor` 8 / 59; `core` farkı yalnızca `labels.ts` (K6, izinli; döndürülmemiş kökte davranış birebir).
+- Görsel doğrulama: etiketler %50 ve %100 demontajda parçaları izliyor; "Çıkış mekanizması" ön ayarı rotoru gizliyor (balans, çatal, takım görünür); demontaj serbest alanda kalıyor (masaüstü ve telefon); arka yüzdeki kaba ayar parçaları kadran tarafına taşınmış.
+- `main.ts` artık `clock.pose`'u aktarıyor; gölge anahtarı pose alanlarını kapsıyor.
+- P3 test değişiklikleri: iki belgelenmiş köşe-kutusu istisnası (kayar/kurma pinyonu ↔ merkez çarkı; gerçek hatlar arası boşluk ölçülü). Kabul.
+- Arayüzde marka adı yok (K5). fps hâlâ gerçek GPU'da ölçülmedi.
