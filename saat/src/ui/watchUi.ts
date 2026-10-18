@@ -22,12 +22,25 @@ export interface WatchUiApi {
   setSpeed(scale: number): void;
   setPaused(paused: boolean): void;
   setView(v: WatchView): void;
+  /** Re-read the clock into the speed and pause buttons (after the clock was replaced or changed from outside). */
+  refresh(): void;
 }
 
-/** A clock showing the wall-clock time of `now`, keeping speed, pause and the wind of `from`. */
+/** A clock showing the wall-clock time of `now`, keeping speed, pause, the wind and the crown and wrist settings of `from`. */
 export function clockAt(from: WatchClock, now: Date): WatchClock {
   const c = WatchClock.fromDate(now, { timeScale: from.timeScale, windTurns: from.windTurns });
   c.paused = from.paused;
+  c.setCrownPosition(from.crownPosition);
+  c.wrist.enabled = from.wrist.enabled;
+  return c;
+}
+
+/** A paused clock standing at movement time `t`, keeping speed, the wind and the crown and wrist settings of `from` (shared links). */
+export function clockAtTime(from: WatchClock, t: number): WatchClock {
+  const c = new WatchClock({ t, timeScale: from.timeScale, windTurns: from.windTurns });
+  c.paused = true;
+  c.setCrownPosition(from.crownPosition);
+  c.wrist.enabled = from.wrist.enabled;
   return c;
 }
 
@@ -143,5 +156,6 @@ export function buildWatchUi(panel: Panel, ref: ClockRef, o: WatchUiHooks): Watc
       sync();
     },
     setView,
+    refresh: sync,
   };
 }

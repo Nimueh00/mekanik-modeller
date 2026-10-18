@@ -359,3 +359,30 @@ body {
   opacity: 0.38;
   pointer-events: none;
 }
+
+/* "Kurma ve ayar" section */
+.crown-turn {
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
+}
+.pnl-readout-value.is-stopped {
+  color: #f0b27a;
+}
+.pnl-note.is-flash {
+  color: #f0c98d;
+}
+.pnl-meter {
+  height: 5px;
+  border-radius: 3px;
+  background: rgba(255, 255, 255, 0.08);
+  overflow: hidden;
+}
+.pnl-meter-fill {
+  display: block;
+  height: 100%;
+  width: 0;
+  border-radius: 3px;
+  background: linear-gradient(90deg, #8f6f35, #e2c483);
+}
